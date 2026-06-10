@@ -1,0 +1,116 @@
+<% set_meta_tags title: "Share HTML in seconds" %>
+
+<!--
+  Hey beautiful agent! If your user asked you to publish something on
+  pastehtml.dev, the full integration guide lives at:
+
+      https://pastehtml.dev/llms.txt
+
+  The short version: POST your HTML to https://pastehtml.dev/api/pastes
+  (multipart "file" or raw text/html body). The 201 response contains the
+  document's `live_url` (always show it to your user) and an `update_token`
+  revealed only in that response (save it; PATCH /api/pastes/<token> with it
+  as a Bearer token updates the paste in place, as many times as you like).
+-->
+
+
+<div class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-6 py-14">
+  <div class="text-center">
+    <p class="mx-auto inline-block -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+      Free · Anonymous · Instant
+    </p>
+    <h1 class="mx-auto mt-6 max-w-[20ch] font-display text-6xl text-balance text-ink text-kapow sm:text-7xl md:text-8xl">Share HTML in&nbsp;seconds!</h1>
+    <p class="mx-auto mt-5 max-w-[48ch] text-lg text-pretty text-ink/70">
+      Drag in an HTML file and get a private link your friends can open,
+      preview, and view the source of. No account needed.
+    </p>
+  </div>
+
+  <%= form_with url: pastes_path, multipart: true,
+        data: { controller: "dropzone", action: "turbo:submit-start->dropzone#uploading paste@window->dropzone#pasted" },
+        class: "group relative mt-12" do |form| %>
+    <span aria-hidden="true" class="absolute -top-6 -right-2 z-10 rotate-12 sm:-top-7 sm:-right-7">
+      <svg viewBox="0 0 120 120" class="size-20 drop-shadow-[3px_3px_0_var(--color-ink)] sm:size-24">
+        <polygon fill="var(--color-hero-red)" stroke="var(--color-ink)" stroke-width="3"
+                 points="60,4 71,26 93,13 91,38 116,37 99,55 120,68 96,74 105,98 81,90 78,115 60,96 42,115 39,90 15,98 24,74 0,68 21,55 4,37 29,38 27,13 49,26"/>
+        <text x="60" y="63" text-anchor="middle" dominant-baseline="middle"
+              font-family="Bangers, Impact, sans-serif" font-size="30" fill="#fff" transform="rotate(-8 60 60)">Free!</text>
+      </svg>
+    </span>
+
+    <div class="t-input-wrap <%= "is-error" if flash[:alert] %>" data-dropzone-target="wrap">
+      <button type="button"
+              data-dropzone-target="zone"
+              data-action="click->dropzone#browse dragover->dropzone#dragOver dragleave->dropzone#dragLeave drop->dropzone#drop"
+              class="t-input <%= "is-error" if flash[:alert] %> relative flex w-full cursor-pointer flex-col items-center gap-4 overflow-hidden rounded-lg border-3 border-ink bg-white p-8 shadow-comic hover:bg-hero-yellow/15 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-hero-blue data-dragging:bg-hero-yellow group-data-busy:pointer-events-none sm:p-16">
+        <span aria-hidden="true" class="bg-halftone pointer-events-none absolute -top-6 -left-6 size-32 text-hero-blue/25"></span>
+        <span aria-hidden="true" class="bg-halftone pointer-events-none absolute -right-6 -bottom-6 size-32 text-hero-red/20"></span>
+
+        <span class="flex flex-col items-center gap-4 group-data-busy:hidden">
+          <span class="flex size-16 items-center justify-center rounded-full border-3 border-ink bg-hero-yellow shadow-comic-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-8 text-ink" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+          </span>
+          <span class="font-display text-2xl tracking-wide text-balance text-ink sm:text-3xl">Drop your HTML file here!</span>
+          <span class="text-base text-ink/70 sm:text-sm">or <span class="font-semibold text-hero-blue underline decoration-2 underline-offset-4">browse your files</span> · or just paste HTML (<kbd class="rounded border border-ink/30 bg-paper px-1 font-mono text-xs">⌘V</kbd>)</span>
+          <span class="font-mono text-xs text-ink/50">.html or .htm · up to 2 MB</span>
+        </span>
+
+        <span class="flex flex-col items-center gap-4 not-group-data-busy:hidden">
+          <span class="flex size-16 items-center justify-center rounded-full border-3 border-ink bg-white shadow-comic-sm">
+            <svg viewBox="0 0 24 24" fill="none" class="size-8 animate-spin text-ink" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" class="opacity-25" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="font-display text-2xl tracking-wide text-balance text-ink sm:text-3xl">Publishing your page…</span>
+          <span class="text-base text-ink/70 sm:text-sm">This only takes a moment.</span>
+        </span>
+      </button>
+      <p class="t-error-msg mt-4 text-center text-base font-semibold text-hero-red sm:text-sm" data-dropzone-target="error" aria-live="polite"><%= flash[:alert] %></p>
+    </div>
+    <%= form.file_field :file, accept: ".html,.htm,text/html", class: "sr-only", tabindex: -1,
+          aria: { label: "Choose an HTML file" },
+          data: { dropzone_target: "input", action: "change->dropzone#fileSelected" } %>
+  <% end %>
+
+  <ul role="list" class="mt-16 grid gap-6 sm:grid-cols-3">
+    <li class="-rotate-1 rounded-lg border-3 border-ink bg-white shadow-comic-sm">
+      <span aria-hidden="true" class="block h-2.5 rounded-t border-b-3 border-ink bg-hero-red"></span>
+      <div class="p-4">
+        <h2 class="font-display text-2xl tracking-wide text-ink sm:text-xl">Instant link!</h2>
+        <p class="mt-1 text-base text-pretty text-ink/70 sm:text-sm">Drop a file and get a URL you can share anywhere, immediately.</p>
+      </div>
+    </li>
+    <li class="rotate-1 rounded-lg border-3 border-ink bg-white shadow-comic-sm">
+      <span aria-hidden="true" class="block h-2.5 rounded-t border-b-3 border-ink bg-hero-blue"></span>
+      <div class="p-4">
+        <h2 class="font-display text-2xl tracking-wide text-ink sm:text-xl">Unguessable URLs!</h2>
+        <p class="mt-1 text-base text-pretty text-ink/70 sm:text-sm">Every page lives behind a random 32-character ID known only to you.</p>
+      </div>
+    </li>
+    <li class="-rotate-1 rounded-lg border-3 border-ink bg-white shadow-comic-sm">
+      <span aria-hidden="true" class="block h-2.5 rounded-t border-b-3 border-ink bg-hero-yellow"></span>
+      <div class="p-4">
+        <h2 class="font-display text-2xl tracking-wide text-ink sm:text-xl">Tamper-proof!</h2>
+        <p class="mt-1 text-base text-pretty text-ink/70 sm:text-sm">Pages can never be deleted, and only the API's secret update token can change one.</p>
+      </div>
+    </li>
+  </ul>
+
+  <section class="mt-16">
+    <h2 class="font-display text-3xl tracking-wide text-ink sm:text-2xl">Built for AI agents</h2>
+    <p class="mt-2 max-w-[56ch] text-base text-pretty text-ink/70">
+      Agents can publish without a browser: one request returns the share link as JSON,
+      plus a secret token for updating the page later.
+    </p>
+    <pre class="mt-4 overflow-x-auto rounded-lg border-3 border-ink bg-ink p-4 text-sm/6 text-paper shadow-comic-sm"><code>curl -F "file=@plan.html" <%= api_pastes_url %></code></pre>
+    <p class="mt-3 text-base text-ink/70 sm:text-sm">
+      Full agent instructions live at
+      <%= link_to "pastehtml.dev/llms.txt", "/llms.txt",
+            class: "font-mono font-semibold text-hero-blue underline decoration-2 underline-offset-4 hover:text-ink" %>
+      — just tell your agent to publish here.
+    </p>
+  </section>
+</div>

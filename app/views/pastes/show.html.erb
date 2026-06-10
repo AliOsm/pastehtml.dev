@@ -1,0 +1,134 @@
+<% set_meta_tags title: @paste.display_title,
+     description: "An HTML page shared through pastehtml.dev — preview it live or read the source.",
+     noindex: true %>
+
+<div class="mx-auto w-full max-w-4xl flex-1 px-6 py-8 sm:py-12">
+  <div class="flex items-center gap-3">
+    <span class="flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-hero-yellow shadow-comic-sm sm:size-9">
+      <span class="t-success-check [--check-y-amount:12px]" data-controller="success-check" data-state="out" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" class="size-5 sm:size-4">
+          <path d="m4.5 12.75 5 5 10-11" stroke="var(--color-ink)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </span>
+    </span>
+    <p class="inline-block -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+      Page published
+    </p>
+  </div>
+  <h1 class="mt-5 font-display text-4xl text-balance text-ink text-kapow sm:text-6xl md:text-7xl">Your page is live!</h1>
+  <p class="mt-4 text-base text-ink/70 sm:text-sm">
+    <% if @paste.title.present? %>
+      <span class="font-semibold text-ink"><%= @paste.title %></span> ·
+    <% end %>
+    <span class="font-mono font-medium text-ink"><%= @paste.original_filename %></span>
+    · <%= number_to_human_size(@paste.content.bytesize) %>
+    · published <%= @paste.created_at.strftime("%B %-d, %Y") %>
+    <% if @paste.updated? %>
+      · updated <%= @paste.updated_at.strftime("%B %-d, %Y") %>
+    <% end %>
+  </p>
+
+  <section class="relative mt-8 rounded-lg border-3 border-ink bg-white p-5 shadow-comic"
+           data-controller="clipboard">
+    <span aria-hidden="true" class="bg-halftone pointer-events-none absolute -right-4 -bottom-4 size-24 text-hero-blue/20"></span>
+    <label for="share-link" class="font-display text-2xl tracking-wide text-ink sm:text-xl">Share link</label>
+    <div class="mt-2 flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
+      <input id="share-link" name="share_link" type="url" readonly value="<%= paste_live_url(@paste) %>"
+             data-clipboard-target="source" data-action="focus->clipboard#select"
+             class="w-full min-w-0 flex-1 rounded-md border-2 border-ink bg-paper px-3 py-2 font-mono text-sm text-ink focus:outline-3 focus:-outline-offset-1 focus:outline-hero-blue max-sm:text-base">
+      <button type="button" data-action="clipboard#copy"
+              class="flex shrink-0 items-center justify-center rounded-md border-2 border-ink bg-hero-red px-3 py-2.5 font-display text-xl tracking-wide text-white shadow-comic-sm transition-transform duration-100 hover:bg-hero-red/90 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue active:translate-x-1 active:translate-y-1 active:shadow-none sm:py-2 sm:text-lg">
+        <span class="t-icon-swap" data-state="a" data-clipboard-target="swap">
+          <span class="t-icon flex items-center justify-center gap-2 whitespace-nowrap" data-icon="a">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-5" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+            </svg>
+            Copy link
+          </span>
+          <span class="t-icon flex items-center justify-center gap-2 whitespace-nowrap" data-icon="b">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="size-5" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            Copied!
+          </span>
+        </span>
+      </button>
+    </div>
+    <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t-2 border-ink/10 pt-4">
+      <%= link_to paste_live_url(@paste), target: "_blank", rel: "noopener",
+            class: "text-base font-semibold text-hero-blue underline decoration-2 underline-offset-4 hover:text-ink sm:text-sm" do %>
+        Open in a new tab
+      <% end %>
+      <%= link_to "Publish another page", root_path,
+            class: "text-base font-semibold text-hero-blue underline decoration-2 underline-offset-4 hover:text-ink sm:text-sm" %>
+    </div>
+  </section>
+
+  <section class="mt-10" data-controller="tabs">
+    <div role="tablist" aria-label="Paste views" class="inline-flex gap-1.5 rounded-lg border-2 border-ink bg-white p-1.5 shadow-comic-sm">
+      <button type="button" role="tab" id="tab-preview" aria-selected="true" aria-controls="panel-preview"
+              data-tabs-target="tab" data-action="tabs#select" data-tabs-panel-param="preview"
+              class="rounded-md border-2 border-transparent px-3 py-1.5 font-display text-xl tracking-wide text-ink/50 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue aria-selected:border-ink aria-selected:bg-hero-yellow aria-selected:text-ink sm:py-1 sm:text-lg">
+        Preview
+      </button>
+      <button type="button" role="tab" id="tab-source" aria-selected="false" aria-controls="panel-source"
+              data-tabs-target="tab" data-action="tabs#select" data-tabs-panel-param="source"
+              class="rounded-md border-2 border-transparent px-3 py-1.5 font-display text-xl tracking-wide text-ink/50 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue aria-selected:border-ink aria-selected:bg-hero-yellow aria-selected:text-ink sm:py-1 sm:text-lg">
+        Source
+      </button>
+    </div>
+
+    <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview" data-tabs-target="panel" data-panel="preview"
+         class="mt-4 [--panel-translate-y:16px]">
+      <div class="group" data-controller="fullscreen" data-action="keydown.esc@window->fullscreen#exit keydown.f@window->fullscreen#keyToggle">
+        <div data-fullscreen-target="slot">
+        <div class="fs-shell group-data-fullscreen:fixed group-data-fullscreen:inset-0 group-data-fullscreen:z-50 group-data-fullscreen:flex group-data-fullscreen:flex-col group-data-fullscreen:p-4 sm:group-data-fullscreen:p-8">
+          <div data-fullscreen-target="panel" class="flex flex-col overflow-hidden rounded-lg border-3 border-ink bg-white shadow-comic group-data-fullscreen:h-full">
+            <div class="flex items-center gap-3 border-b-3 border-ink bg-paper px-3 py-2">
+              <span class="flex gap-1.5" aria-hidden="true">
+                <span class="size-3 rounded-full border-2 border-ink bg-hero-red"></span>
+                <span class="size-3 rounded-full border-2 border-ink bg-hero-yellow"></span>
+                <span class="size-3 rounded-full border-2 border-ink bg-hero-blue"></span>
+              </span>
+              <span class="min-w-0 flex-1 truncate text-center font-mono text-xs text-ink/60"><%= @paste.original_filename %> — pastehtml.dev</span>
+              <button type="button" data-action="fullscreen#toggle" title="Toggle fullscreen (F)"
+                      class="relative flex shrink-0 items-center justify-center rounded-md border-2 border-ink bg-white px-2.5 py-1.5 text-sm font-semibold text-ink shadow-comic-sm transition-transform duration-100 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue active:translate-x-0.5 active:translate-y-0.5 active:shadow-none sm:py-1 sm:text-xs">
+                <span class="absolute top-1/2 left-1/2 size-[max(100%,3rem)] -translate-1/2 pointer-fine:hidden" aria-hidden="true"></span>
+                <span class="t-icon-swap" data-state="a" data-fullscreen-target="swap">
+                  <span class="t-icon flex items-center justify-center gap-1.5 whitespace-nowrap" data-icon="a">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3.5" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                    </svg>
+                    Fullscreen
+                  </span>
+                  <span class="t-icon flex items-center justify-center gap-1.5 whitespace-nowrap" data-icon="b">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="size-3.5" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25" />
+                    </svg>
+                    Exit
+                  </span>
+                </span>
+              </button>
+            </div>
+            <%# Cross-origin by design: the paste's own origin is the sandbox.
+                Scripts and (partitioned) localStorage work, but the frame can
+                never touch pastehtml.dev. %>
+            <iframe src="<%= paste_live_url(@paste) %>"
+                    title="Preview of <%= @paste.original_filename %>"
+                    loading="lazy"
+                    class="h-[65vh] w-full bg-white group-data-fullscreen:h-auto group-data-fullscreen:flex-1"></iframe>
+          </div>
+        </div>
+        </div>
+        <p class="mt-4 text-base text-ink/60 sm:text-sm">Every page runs on its own isolated origin: scripts and local storage work, but they can never touch this site or other pastes. Press <kbd class="rounded border border-ink/30 bg-white px-1 font-mono text-xs">F</kbd> for fullscreen, <kbd class="rounded border border-ink/30 bg-white px-1 font-mono text-xs">Esc</kbd> to leave.</p>
+      </div>
+    </div>
+
+    <div id="panel-source" role="tabpanel" aria-labelledby="tab-source" data-tabs-target="panel" data-panel="source"
+         hidden class="mt-4 [--panel-translate-y:16px]">
+      <% cache @paste do %>
+        <pre class="max-h-[70vh] overflow-auto rounded-lg border-3 border-ink bg-ink p-4 text-sm/6 whitespace-pre text-paper shadow-comic sm:p-6"><code class="highlight"><%= highlighted_source(@paste.content) %></code></pre>
+      <% end %>
+    </div>
+  </section>
+</div>

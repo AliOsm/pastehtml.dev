@@ -1,0 +1,9 @@
+hello:
+  token: 3yze7vaqk9mnpxs2wb4crd8fgh1jtuvw
+  content: "<!DOCTYPE html><html><head><title>Hello</title></head><body><h1>Hello, world</h1></body></html>"
+  original_filename: hello.html
+
+snippet:
+  token: 8ktw4rbcd6fghjn5pq2suv7xyz3aemrt
+  content: "<p>Just a fragment</p>"
+  original_filename: snippet.html
