@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased">
+  <head>
+    <%= display_meta_tags(default_meta_tags) %>
+
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="view-transition" content="same-origin">
+    <meta name="application-name" content="pastehtml.dev">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="pastehtml">
+    <meta name="theme-color" content="#fff8ec">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# PWA manifest for installable apps (routes are defined in config/routes.rb). %>
+    <%= tag.link rel: "manifest", href: pwa_manifest_path %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+  </head>
+
+  <body class="bg-paper font-sans text-ink" data-controller="pwa">
+    <div class="isolate flex min-h-dvh flex-col overflow-x-clip">
+      <header class="flex items-center justify-between gap-4 px-6 py-5 sm:px-10">
+        <a href="/" aria-label="Homepage" class="-rotate-1 border-3 border-ink bg-white px-3 py-1 font-display text-2xl tracking-wide shadow-comic-sm">
+          pastehtml<span class="text-hero-red">.dev</span>
+        </a>
+        <p class="rotate-2 border-2 border-ink bg-hero-yellow px-2.5 py-1 font-display text-sm tracking-wide shadow-comic-sm max-sm:hidden">
+          No sign-up. Ever!
+        </p>
+      </header>
+
+      <main class="flex flex-1 flex-col">
+        <%= yield %>
+      </main>
+
+      <footer class="mt-10 border-t-3 border-ink bg-white">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-6 py-4 sm:px-10">
+          <p class="text-base text-ink/70 sm:text-sm">Share HTML pages in seconds. Free, anonymous, permanent.</p>
+          <p class="font-display text-sm tracking-wide text-ink/60">pastehtml.dev — issue #1</p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

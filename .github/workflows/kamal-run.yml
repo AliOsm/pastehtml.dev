@@ -1,0 +1,63 @@
+name: Kamal Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Command to run"
+        required: true
+        type: string
+        default: "deploy"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  kamal-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    concurrency:
+      group: kamal-run
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v6
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Expose GitHub Runtime for cache
+        uses: crazy-max/ghaction-github-runtime@v4
+
+      # .kamal/secrets reads the Cloudflare Origin CA pair from these
+      # gitignored files (kamal-proxy serves *.pastehtml.dev with them).
+      - name: Write Cloudflare origin certificate
+        env:
+          CLOUDFLARE_ORIGIN_CERTIFICATE: ${{ secrets.CLOUDFLARE_ORIGIN_CERTIFICATE }}
+          CLOUDFLARE_ORIGIN_KEY: ${{ secrets.CLOUDFLARE_ORIGIN_KEY }}
+        run: |
+          mkdir -p .kamal/certs
+          printf '%s\n' "$CLOUDFLARE_ORIGIN_CERTIFICATE" > .kamal/certs/origin.pem
+          printf '%s\n' "$CLOUDFLARE_ORIGIN_KEY" > .kamal/certs/origin-key.pem
+
+      - name: Run bundle exec kamal ${{ github.event.inputs.command }}
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          bundle exec kamal ${{ github.event.inputs.command }}

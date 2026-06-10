@@ -1,0 +1,134 @@
+# Name of your application. Used to uniquely configure containers.
+service: paste_html_dev
+
+# Name of the container image (use your-user/app-name on external registries).
+image: aliosm/pastehtml
+
+# Deploy to these servers.
+servers:
+  web:
+    - <%= ENV["SERVER_IP"] %>
+  # job:
+  #   hosts:
+  #     - <%= ENV["SERVER_IP"] %>
+  #   cmd: bin/jobs
+
+# Pastes are served from per-token subdomains, so the proxy routes the
+# wildcard too. Wildcards can't get Let's Encrypt certs over HTTP-01, so TLS
+# uses a (free, 15-year) Cloudflare Origin CA certificate issued for
+# "pastehtml.dev, *.pastehtml.dev" -- put the PEM pair in .kamal/certs/
+# (gitignored) and front the app with Cloudflare: proxied wildcard DNS,
+# SSL mode "Full (strict)". Universal SSL covers one wildcard level on the
+# edge. forward_headers passes the real client IP through (the
+# cloudflare-rails gem makes Rails trust CF's ranges for remote_ip).
+#
+# Using an SSL proxy like this requires turning on config.assume_ssl and
+# config.force_ssl in production.rb! (Both are enabled for this app.)
+proxy:
+  ssl:
+    certificate_pem: CLOUDFLARE_ORIGIN_CERTIFICATE
+    private_key_pem: CLOUDFLARE_ORIGIN_KEY
+  forward_headers: true
+  hosts:
+    - pastehtml.dev
+    - www.pastehtml.dev
+    - "*.pastehtml.dev"
+
+# Where you keep your container images.
+registry:
+  # Alternatives: hub.docker.com / registry.digitalocean.com / ghcr.io / ...
+  server: ghcr.io
+
+  # Needed for authenticated registries.
+  username: aliosm
+
+  # Always use an access token rather than real password when possible.
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Inject ENV variables into containers (secrets come from .kamal/secrets).
+env:
+  secret:
+    - RAILS_MASTER_KEY
+    - POSTGRES_PASSWORD
+  clear:
+    # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
+    # When you start using multiple servers, you should split out job processing to a dedicated machine.
+    SOLID_QUEUE_IN_PUMA: true
+
+    # Set number of processes dedicated to Solid Queue (default: 1)
+    # JOB_CONCURRENCY: 3
+
+    # Set number of cores available to the application on each server (default: 1).
+    # WEB_CONCURRENCY: 2
+
+    # Enable YJIT for faster Ruby execution.
+    RUBY_YJIT_ENABLE: "1"
+
+    # The postgres accessory below, reachable over the local kamal docker network.
+    DB_HOST: paste_html_dev-db
+
+    # Log everything from Rails
+    # RAILS_LOG_LEVEL: debug
+
+# Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
+# "bin/kamal logs -r job" will tail logs from the first server in the job section.
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
+
+# Use a persistent storage volume for sqlite database files and local Active Storage files.
+# Recommended to change this to a mounted volume path that is backed up off server.
+volumes:
+  - "paste_html_dev_storage:/rails/storage"
+
+# Bridge fingerprinted assets, like JS and CSS, between versions to avoid
+# hitting 404 on in-flight requests. Combines all files from new and old
+# version inside the asset_path.
+asset_path: /rails/public/assets
+
+# Configure the image builder.
+builder:
+  arch: amd64
+
+  # Deploys run from GitHub Actions; layers are cached in the GHA cache.
+  # Remove this block if you ever build locally (it fails outside Actions).
+  cache:
+    type: gha
+    options: mode=max
+
+  # # Build image via remote server (useful for faster amd64 builds on arm64 computers)
+  # remote: ssh://docker@docker-builder-server
+  #
+  # # Pass arguments and secrets to the Docker build process
+  # args:
+  #   RUBY_VERSION: ruby-3.4.7
+  # secrets:
+  #   - GITHUB_TOKEN
+  #   - RAILS_MASTER_KEY
+
+# Use a different ssh user than root
+# ssh:
+#   user: app
+
+# Use accessory services (secrets come from .kamal/secrets).
+# POSTGRES_PASSWORD is shared by the app (database.yml) and the accessory.
+# db/production.sql creates the solid_cache/solid_queue databases on first boot.
+accessories:
+  db:
+    image: postgres:18.1
+    roles:
+      - web
+    cmd: postgres -c "shared_preload_libraries=pg_stat_statements" -c "pg_stat_statements.track=all" -c "pg_stat_statements.max=10000" -c "track_activity_query_size=2048"
+    env:
+      clear:
+        POSTGRES_DB: paste_html_dev_production
+        POSTGRES_USER: paste_html_dev
+      secret:
+        - POSTGRES_PASSWORD
+    files:
+      - db/production.sql:/docker-entrypoint-initdb.d/setup.sql
+    directories:
+      - data:/var/lib/postgresql

@@ -1,0 +1,43 @@
+{
+  "id": "/",
+  "name": "pastehtml.dev",
+  "short_name": "pastehtml",
+  "description": "Drop an HTML file, get a private link to share. No sign-up, no editing, no fuss.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#fff8ec",
+  "background_color": "#fff8ec",
+  "icons": [
+    <%# "any" = comic P on a rounded red tile; "maskable" = same, padded into the safe zone. %>
+    <%# The SVG is the browser-tab favicon (declared in the layout <head>), not a manifest %>
+    <%# icon: Chrome's manifest-icon pipeline can't decode SVG. These PNGs cover every %>
+    <%# installed-app surface. %>
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}
