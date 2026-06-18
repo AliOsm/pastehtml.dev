@@ -12,6 +12,17 @@ class PwaTest < ActionDispatch::IntegrationTest
     assert(manifest["icons"].any? { |icon| icon["purpose"] == "maskable" })
   end
 
+  test "localizes the manifest to Arabic on request" do
+    get pwa_manifest_url(format: :json, locale: :ar)
+
+    assert_response :success
+    manifest = JSON.parse(response.body)
+    assert_equal "pastehtml.dev", manifest["name"]
+    assert_equal "ar", manifest["lang"]
+    assert_equal "rtl", manifest["dir"]
+    assert_equal I18n.t("home.meta_description", locale: :ar), manifest["description"]
+  end
+
   test "serves the service worker at a root path" do
     get pwa_service_worker_url(format: :js)
 

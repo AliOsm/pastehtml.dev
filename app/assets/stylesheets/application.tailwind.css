@@ -3,10 +3,14 @@
 @import "./highlight.css";
 
 @theme {
-  --font-sans: "InterVariable", ui-sans-serif, system-ui, sans-serif;
+  /* Arabic faces sit at the end of each stack: the Latin-only primaries
+     (Inter, Bangers, IBM Plex Mono) have no Arabic glyphs, so Arabic
+     codepoints fall through to them automatically — Lalezar gives headlines
+     the same bold comic punch as Bangers. */
+  --font-sans: "InterVariable", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-sans--font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-  --font-display: "Bangers", "Impact", sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --font-display: "Bangers", "Lalezar", "Impact", sans-serif;
+  --font-mono: "IBM Plex Mono", "IBM Plex Sans Arabic", ui-monospace, "SF Mono", monospace;
 
   /* Comic palette */
   --color-ink: #18120e;
@@ -53,6 +57,23 @@
 ::selection {
   background-color: var(--color-hero-yellow);
   color: var(--color-ink);
+}
+
+/* Arabic script is cursive: any letter-spacing severs the joins between
+   letters. In RTL we neutralize every `tracking-*` utility and the display
+   letter-spacing so Arabic words stay connected and legible. (Unlayered, so it
+   wins over Tailwind's utilities.) The handful of Latin runs inside an Arabic
+   page are marked dir="ltr"; losing their tracking is imperceptible. */
+[dir="rtl"] * {
+  letter-spacing: normal;
+}
+
+/* The Arabic display face (Lalezar) has deep descenders and diacritics that
+   overflow Tailwind's line-height:1 on the giant kapow headings, colliding with
+   the next element. Give RTL headings real leading (Latin/Bangers keeps its
+   tight line-height). */
+[dir="rtl"] .text-kapow {
+  line-height: 1.3;
 }
 
 /* In-site fullscreen open/close. The panel morphs between its inline spot

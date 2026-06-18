@@ -76,15 +76,32 @@
         text-decoration-thickness: 2px;
         text-underline-offset: 4px;
       }
+
+      .divider {
+        width: 3rem;
+        border: 0;
+        border-top: 3px solid rgb(24 18 14 / 0.25);
+      }
+
+      [lang="ar"] {
+        letter-spacing: normal;
+      }
+
+      h1[lang="ar"] {
+        font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+      }
     </style>
   </head>
 
   <body>
     <main>
       <span class="badge">400</span>
-      <h1>Bad request!</h1>
-      <p>The server couldn't make sense of that request. Check the URL and try again.</p>
-      <a href="/">Back to pastehtml.dev</a>
+      <h1 lang="en" dir="ltr">Bad request!</h1>
+      <p lang="en" dir="ltr">The server couldn't make sense of that request. Check the URL and try again.</p>
+      <hr class="divider">
+      <h1 lang="ar" dir="rtl">طلب غير صالح!</h1>
+      <p lang="ar" dir="rtl">تعذّر على الخادم فهم هذا الطلب. تحقّق من الرابط وحاول مجددًا.</p>
+      <a href="/">Back to pastehtml.dev · العودة إلى الصفحة الرئيسية</a>
     </main>
   </body>
 </html>

@@ -1,31 +1,128 @@
-# Files in the config/locales directory are used for internationalization and
-# are automatically loaded by Rails. If you want to use locales other than
-# English, add the necessary files in this directory.
-#
-# To use the locales, use `I18n.t`:
-#
-#     I18n.t "hello"
-#
-# In views, this is aliased to just `t`:
-#
-#     <%= t("hello") %>
-#
-# To use a different locale, set it with `I18n.locale`:
-#
-#     I18n.locale = :es
-#
-# This would use the information in config/locales/es.yml.
-#
-# To learn more about the API, please read the Rails Internationalization guide
-# at https://guides.rubyonrails.org/i18n.html.
-#
-# Be aware that YAML interprets the following case-insensitive strings as
-# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
-# must be quoted to be interpreted as strings. For example:
-#
-#     en:
-#       "yes": yup
-#       enabled: "ON"
-
+# English UI copy for pastehtml.dev. Arabic lives in ar.yml with the exact same
+# key set (a test guards against drift). Keys ending in `_html` are rendered
+# without escaping, so their `%{...}` placeholders receive pre-built markup.
 en:
-  hello: "Hello world"
+  language_name: "English"
+  language_short: "EN"
+
+  layout:
+    homepage: "Homepage"
+    no_signup: "No sign-up. Ever!"
+    footer_tagline: "Share HTML pages in seconds. Free, anonymous, permanent."
+    footer_issue: "pastehtml.dev — issue #1"
+    switch_language: "Switch language"
+
+  home:
+    meta_title: "Share HTML in seconds"
+    meta_description: "Drop an HTML file, get a private link to share. No sign-up, no editing, no fuss."
+    eyebrow: "Free · Anonymous · Instant"
+    hero_html: "Share HTML in&nbsp;seconds!"
+    subtitle: "Drag in an HTML file and get a private link your friends can open, preview, and view the source of. No account needed."
+    free_badge: "Free!"
+    dropzone:
+      heading: "Drop your HTML file here!"
+      browse: "browse your files"
+      browse_html: "or %{browse} · or just paste HTML (%{paste})"
+      constraints_html: "%{html} or %{htm} · up to %{size}"
+      publishing: "Publishing your page…"
+      publishing_hint: "This only takes a moment."
+      choose_file: "Choose an HTML file"
+    features:
+      instant:
+        title: "Instant link!"
+        body: "Drop a file and get a URL you can share anywhere, immediately."
+      unguessable:
+        title: "Unguessable URLs!"
+        body: "Every page lives behind a random 32-character ID known only to you."
+      tamper_proof:
+        title: "Tamper-proof!"
+        body: "Pages can never be deleted, and only the API's secret update token can change one."
+    agents:
+      title: "Built for AI agents"
+      body: "Agents can publish without a browser: one request returns the share link as JSON, plus a secret token for updating the page later."
+      docs_html: "Full agent instructions live at %{link} — just tell your agent to publish here."
+    making_of:
+      title: "Psst… read the making-of!"
+      body: "This whole site was built by a human and an AI in a day — published, of course, as a paste."
+
+  show:
+    meta_description: "An HTML page shared through pastehtml.dev — preview it live or read the source."
+    published_badge: "Page published"
+    live_title: "Your page is live!"
+    meta:
+      published: "published %{date}"
+      updated: "updated %{date}"
+    share:
+      label: "Share link"
+      copy: "Copy link"
+      copied: "Copied!"
+      open_new_tab: "Open in a new tab"
+      publish_another: "Publish another page"
+    tabs:
+      aria: "Paste views"
+      preview: "Preview"
+      source: "Source"
+    fullscreen:
+      enter: "Fullscreen"
+      exit: "Exit"
+      toggle_title: "Toggle fullscreen (F)"
+    preview:
+      iframe_title: "Preview of %{filename}"
+      isolation_html: "Every page runs on its own isolated origin: scripts and local storage work, but they can never touch this site or other pastes. Press %{fullscreen_key} for fullscreen, %{exit_key} to leave."
+
+  dropzone_errors:
+    not_html_file: "That doesn't look like an HTML file. Choose a .html or .htm file."
+    empty: "That file is empty."
+    too_large: "That file is larger than 2 MB."
+    not_html_clipboard: "The clipboard doesn't look like HTML. It should start with a tag."
+
+  flash:
+    choose_file: "Choose an HTML file to upload."
+    rate_limited_minute: "Whoa, slow down! You can publish again in a minute."
+    rate_limited_day: "You've hit today's publishing limit. Come back tomorrow!"
+
+  date:
+    formats:
+      long: "%B %-d, %Y"
+    month_names:
+      - ~
+      - January
+      - February
+      - March
+      - April
+      - May
+      - June
+      - July
+      - August
+      - September
+      - October
+      - November
+      - December
+
+  number:
+    human:
+      storage_units:
+        format: "%n %u"
+        units:
+          byte:
+            one: "Byte"
+            other: "Bytes"
+          kb: "KB"
+          mb: "MB"
+          gb: "GB"
+          tb: "TB"
+
+  activerecord:
+    attributes:
+      paste:
+        original_filename: "Filename"
+        content: "File"
+    errors:
+      models:
+        paste:
+          attributes:
+            original_filename:
+              not_html: "must be an .html or .htm file"
+            content:
+              blank: "can't be blank"
+              too_large: "is too large (maximum is 2 MB)"

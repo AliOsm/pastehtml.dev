@@ -89,12 +89,12 @@ class Paste < ApplicationRecord
       return if original_filename.blank?
       return if File.extname(original_filename).match?(HTML_EXTENSION)
 
-      errors.add(:original_filename, "must be an .html or .htm file")
+      errors.add(:original_filename, :not_html)
     end
 
     def content_must_fit_size_limit
       return if content.blank? || content.bytesize <= MAX_CONTENT_BYTES
 
-      errors.add(:content, "is too large (maximum is 2 MB)")
+      errors.add(:content, :too_large)
     end
 end

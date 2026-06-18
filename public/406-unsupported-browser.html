@@ -76,15 +76,32 @@
         text-decoration-thickness: 2px;
         text-underline-offset: 4px;
       }
+
+      .divider {
+        width: 3rem;
+        border: 0;
+        border-top: 3px solid rgb(24 18 14 / 0.25);
+      }
+
+      [lang="ar"] {
+        letter-spacing: normal;
+      }
+
+      h1[lang="ar"] {
+        font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+      }
     </style>
   </head>
 
   <body>
     <main>
       <span class="badge">406</span>
-      <h1>Your browser is too old!</h1>
-      <p>pastehtml.dev needs a modern browser. Please update yours and come back.</p>
-      <a href="/">Back to pastehtml.dev</a>
+      <h1 lang="en" dir="ltr">Your browser is too old!</h1>
+      <p lang="en" dir="ltr">pastehtml.dev needs a modern browser. Please update yours and come back.</p>
+      <hr class="divider">
+      <h1 lang="ar" dir="rtl">متصفّحك قديم جدًا!</h1>
+      <p lang="ar" dir="rtl">يحتاج pastehtml.dev إلى متصفّح حديث. يُرجى تحديث متصفّحك ثم العودة.</p>
+      <a href="/">Back to pastehtml.dev · العودة إلى الصفحة الرئيسية</a>
     </main>
   </body>
 </html>

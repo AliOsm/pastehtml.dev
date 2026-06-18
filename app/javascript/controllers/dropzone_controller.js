@@ -6,6 +6,14 @@ const MAX_BYTES = 2 * 1024 * 1024
 // validation with an error shake, and the busy state while publishing.
 export default class extends Controller {
   static targets = ["input", "zone", "wrap", "error"]
+  // User-facing messages are translated server-side and handed in as values, so
+  // the controller stays locale-agnostic.
+  static values = {
+    notHtmlFile: String,
+    empty: String,
+    tooLarge: String,
+    notHtmlClipboard: String,
+  }
 
   connect() {
     if (this.errorTarget.textContent.trim()) this.showError()
@@ -61,7 +69,7 @@ export default class extends Controller {
     event.preventDefault()
 
     if (!source.startsWith("<")) {
-      this.errorTarget.textContent = "The clipboard doesn't look like HTML. It should start with a tag."
+      this.errorTarget.textContent = this.notHtmlClipboardValue
       this.showError()
       return
     }
@@ -93,9 +101,9 @@ export default class extends Controller {
   }
 
   problemWith(file) {
-    if (!/\.html?$/i.test(file.name)) return "That doesn't look like an HTML file. Choose a .html or .htm file."
-    if (file.size === 0) return "That file is empty."
-    if (file.size > MAX_BYTES) return "That file is larger than 2 MB."
+    if (!/\.html?$/i.test(file.name)) return this.notHtmlFileValue
+    if (file.size === 0) return this.emptyValue
+    if (file.size > MAX_BYTES) return this.tooLargeValue
     return null
   }
 

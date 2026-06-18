@@ -76,15 +76,32 @@
         text-decoration-thickness: 2px;
         text-underline-offset: 4px;
       }
+
+      .divider {
+        width: 3rem;
+        border: 0;
+        border-top: 3px solid rgb(24 18 14 / 0.25);
+      }
+
+      [lang="ar"] {
+        letter-spacing: normal;
+      }
+
+      h1[lang="ar"] {
+        font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+      }
     </style>
   </head>
 
   <body>
     <main>
       <span class="badge">404</span>
-      <h1>This page vanished!</h1>
-      <p>The page you're looking for doesn't exist. The link may be wrong, or the page was never published.</p>
-      <a href="/">Back to pastehtml.dev</a>
+      <h1 lang="en" dir="ltr">This page vanished!</h1>
+      <p lang="en" dir="ltr">The page you're looking for doesn't exist. The link may be wrong, or the page was never published.</p>
+      <hr class="divider">
+      <h1 lang="ar" dir="rtl">هذه الصفحة اختفت!</h1>
+      <p lang="ar" dir="rtl">الصفحة التي تبحث عنها غير موجودة. قد يكون الرابط خاطئًا، أو أنها لم تُنشر أصلًا.</p>
+      <a href="/">Back to pastehtml.dev · العودة إلى الصفحة الرئيسية</a>
     </main>
   </body>
 </html>

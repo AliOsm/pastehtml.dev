@@ -24,6 +24,12 @@ module PasteHtmlDev
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w[assets tasks])
 
+    # English (default) and Arabic. Fallbacks keep a half-finished Arabic
+    # translation from ever breaking a page: a missing key falls back to English.
+    config.i18n.available_locales = %i[ en ar ]
+    config.i18n.default_locale = :en
+    config.i18n.fallbacks = true
+
     # Configuration for the application, engines, and railties goes here.
     #
     # These settings can be overridden in specific environments using the files

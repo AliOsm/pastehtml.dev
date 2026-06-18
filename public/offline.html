@@ -69,15 +69,32 @@
         text-decoration-thickness: 2px;
         text-underline-offset: 4px;
       }
+
+      .divider {
+        width: 3rem;
+        border: 0;
+        border-top: 3px solid rgb(24 18 14 / 0.25);
+      }
+
+      [lang="ar"] {
+        letter-spacing: normal;
+      }
+
+      h1[lang="ar"] {
+        font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+      }
     </style>
   </head>
 
   <body>
     <main>
       <img src="/icon.svg" alt="" aria-hidden="true">
-      <h1>You're offline!</h1>
-      <p>pastehtml.dev needs a connection to publish and open pages. Check your network and try again.</p>
-      <a href="/">Retry</a>
+      <h1 lang="en" dir="ltr">You're offline!</h1>
+      <p lang="en" dir="ltr">pastehtml.dev needs a connection to publish and open pages. Check your network and try again.</p>
+      <hr class="divider">
+      <h1 lang="ar" dir="rtl">أنت غير متصل بالإنترنت!</h1>
+      <p lang="ar" dir="rtl">يحتاج pastehtml.dev إلى اتصال لنشر الصفحات وفتحها. تحقّق من شبكتك وحاول مجددًا.</p>
+      <a href="/">Retry · إعادة المحاولة</a>
     </main>
   </body>
 </html>

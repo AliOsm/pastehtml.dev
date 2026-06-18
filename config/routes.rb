@@ -15,10 +15,15 @@ Rails.application.routes.draw do
   constraints ->(request) { !request.host.match?(paste_host) } do
     # Dynamic PWA files rendered from app/views/pwa/*. They live at stable root
     # paths because a service worker's scope is bound to its path.
-    get "manifest.json" => "rails/pwa#manifest", as: :pwa_manifest
+    get "manifest.json" => "pwa#manifest", as: :pwa_manifest
     get "service-worker.js" => "rails/pwa#service_worker", as: :pwa_service_worker
 
     root "pastes#new"
+
+    # Saves the visitor's language choice (from the header toggle) and bounces
+    # back. Unknown locales are ignored in the controller, so it stays a plain
+    # GET link without a route constraint.
+    get "locale/:locale", to: "locales#update", as: :locale
 
     resources :pastes, only: :create
 

@@ -2,18 +2,23 @@ class PastesController < ApplicationController
   include PasteLiveUrl
   helper_method :paste_live_url
 
+  # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
+  # Gates only the app's own UI: paste content (live/raw/show) must open in
+  # any browser -- that's the product's whole promise.
+  allow_browser versions: :modern, only: %i[ new create ]
+
   before_action :set_paste, only: %i[ show raw ]
 
   rate_limit to: 10, within: 1.minute, only: :create,
-    with: -> { redirect_to root_path, alert: "Whoa, slow down! You can publish again in a minute." }
+    with: -> { redirect_to root_path, alert: t("flash.rate_limited_minute") }
   rate_limit to: 200, within: 1.day, only: :create, name: "daily",
-    with: -> { redirect_to root_path, alert: "You've hit today's publishing limit. Come back tomorrow!" }
+    with: -> { redirect_to root_path, alert: t("flash.rate_limited_day") }
 
   def new
   end
 
   def create
-    return redirect_to root_path, alert: "Choose an HTML file to upload." unless upload?
+    return redirect_to root_path, alert: t("flash.choose_file") unless upload?
 
     paste = Paste.from_upload(params[:file])
 

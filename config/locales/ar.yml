@@ -1,0 +1,121 @@
+# Arabic UI copy for pastehtml.dev — mirrors en.yml key for key (a test guards
+# the two against drift). Keys ending in `_html` are rendered without escaping,
+# so their `%{...}` placeholders receive pre-built markup. Digits stay Western;
+# storage units (KB/MB) stay Latin to match the size copy.
+ar:
+  language_name: العربية
+  language_short: عربي
+  layout:
+    homepage: الصفحة الرئيسية
+    no_signup: بلا تسجيل. أبدًا!
+    footer_tagline: شارك صفحات HTML في ثوانٍ. مجانًا، بلا هوية، وإلى الأبد.
+    footer_issue: pastehtml.dev — العدد رقم 1
+    switch_language: تغيير اللغة
+  home:
+    meta_title: شارك HTML في ثوانٍ
+    meta_description: أفلِت ملف HTML واحصل على رابط خاص للمشاركة. بلا تسجيل، بلا تعديل، بلا تعقيد.
+    eyebrow: مجانًا · بلا هوية · فوري
+    hero_html: شارك HTML في&nbsp;ثوانٍ!
+    subtitle: اسحب ملف HTML إلى هنا واحصل على رابط خاص يفتحه أصدقاؤك ليعاينوا الصفحة ويطّلعوا على مصدرها. لا حاجة إلى حساب.
+    free_badge: مجانًا!
+    dropzone:
+      heading: أفلِت ملف HTML هنا!
+      browse: تصفّح ملفاتك
+      browse_html: أو %{browse} · أو الصق HTML مباشرةً (%{paste})
+      constraints_html: "%{html} أو %{htm} · حتى %{size}"
+      publishing: جارٍ نشر صفحتك…
+      publishing_hint: لن يستغرق الأمر سوى لحظة.
+      choose_file: اختر ملف HTML
+    features:
+      instant:
+        title: رابط فوري!
+        body: أفلِت ملفًا واحصل على URL تشاركه أينما شئت، في الحال.
+      unguessable:
+        title: روابط لا تُخمَّن!
+        body: كل صفحة محمية خلف معرّف عشوائي من 32 حرفًا لا يعرفه سواك.
+      tamper_proof:
+        title: محصّنة من العبث!
+        body: لا يمكن حذف الصفحات أبدًا، ولا يغيّرها إلا رمز التحديث السري الخاص بـ API.
+    agents:
+      title: مصمَّم لوكلاء الذكاء الاصطناعي
+      body: 'يمكن للوكلاء النشر بلا متصفّح: طلب واحد يُعيد رابط المشاركة بصيغة JSON، مع رمز سري لتحديث الصفحة لاحقًا.'
+      docs_html: تعليمات الوكلاء الكاملة موجودة في %{link} — فقط اطلب من وكيلك أن ينشر هنا.
+    making_of:
+      title: بسسست… اقرأ كواليس الصنع!
+      body: هذا الموقع بأكمله بناه إنسان وذكاء اصطناعي في يوم واحد — ونُشر، بطبيعة الحال، كصفحةٍ على pastehtml.dev.
+  show:
+    meta_description: صفحة HTML تمت مشاركتها عبر pastehtml.dev — عاينها مباشرةً أو اطّلع على مصدرها.
+    published_badge: نُشرت الصفحة
+    live_title: صفحتك على الهواء!
+    meta:
+      published: نُشرت %{date}
+      updated: حُدّثت %{date}
+    share:
+      label: رابط المشاركة
+      copy: انسخ الرابط
+      copied: تم النسخ!
+      open_new_tab: افتح في علامة تبويب جديدة
+      publish_another: انشر صفحة أخرى
+    tabs:
+      aria: طرق عرض الصفحة
+      preview: معاينة
+      source: المصدر
+    fullscreen:
+      enter: ملء الشاشة
+      exit: خروج
+      toggle_title: تبديل ملء الشاشة (F)
+    preview:
+      iframe_title: معاينة %{filename}
+      isolation_html: 'تعمل كل صفحة في بيئة معزولة خاصة بها: تعمل بداخلها النصوص البرمجية والتخزين المحلي بشكل كامل، لكنها لا تستطيع الوصول إلى هذا الموقع أو إلى الصفحات الأخرى مطلقًا. اضغط %{fullscreen_key} لملء الشاشة، أو %{exit_key} للخروج.'
+  dropzone_errors:
+    not_html_file: لا يبدو هذا ملف HTML. اختر ملف .html أو .htm.
+    empty: هذا الملف فارغ.
+    too_large: حجم هذا الملف أكبر من 2 MB.
+    not_html_clipboard: لا يبدو محتوى الحافظة بصيغة HTML. يجب أن يبدأ بوسم.
+  flash:
+    choose_file: اختر ملف HTML لرفعه.
+    rate_limited_minute: مهلًا، على رِسلك! يمكنك النشر مجددًا بعد دقيقة.
+    rate_limited_day: لقد بلغت حدّ النشر لهذا اليوم. عُد غدًا!
+  date:
+    formats:
+      long: "%-d %B %Y"
+    month_names:
+    -
+    - يناير
+    - فبراير
+    - مارس
+    - أبريل
+    - مايو
+    - يونيو
+    - يوليو
+    - أغسطس
+    - سبتمبر
+    - أكتوبر
+    - نوفمبر
+    - ديسمبر
+  number:
+    human:
+      storage_units:
+        format: "%n %u"
+        units:
+          byte:
+            one: Byte
+            other: Bytes
+          kb: KB
+          mb: MB
+          gb: GB
+          tb: TB
+  activerecord:
+    attributes:
+      paste:
+        original_filename: اسم الملف
+        content: الملف
+    errors:
+      models:
+        paste:
+          attributes:
+            original_filename:
+              not_html: يجب أن يكون ملف .html أو .htm
+            content:
+              blank: لا يمكن أن يكون فارغًا
+              too_large: كبير جدًا (الحد الأقصى 2 MB)
