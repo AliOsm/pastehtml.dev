@@ -61,14 +61,14 @@ class LocalizationTest < ActionDispatch::IntegrationTest
   private
     def leaf_keys(node, prefix = [])
       case node
-      when Hash then node.flat_map { |k, v| leaf_keys(v, prefix + [k]) }
+      when Hash then node.flat_map { |k, v| leaf_keys(v, prefix + [ k ]) }
       else [ prefix.join(".") ]
       end
     end
 
     def each_leaf(node, prefix = [], &block)
       node.each do |k, v|
-        v.is_a?(Hash) ? each_leaf(v, prefix + [k], &block) : block.call(prefix + [k], v)
+        v.is_a?(Hash) ? each_leaf(v, prefix + [ k ], &block) : block.call(prefix + [ k ], v)
       end
     end
 
