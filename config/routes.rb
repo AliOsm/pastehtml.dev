@@ -1,7 +1,9 @@
 Rails.application.routes.draw do
-  # Hosts like <token>.pastehtml.dev (32 lowercase alphanumerics). Matched on
-  # the host so it works with any tld_length (token.localhost in development).
-  paste_host = /\A[a-z0-9]{32}\./
+  # Hosts like <token>.pastehtml.dev (32 lowercase alphanumerics), plus a few
+  # curated vanity subdomains for the blog posts. Matched on the host so it
+  # works with any tld_length (token.localhost in development).
+  vanity_hosts = %w[ making-of lock-it-up mark-it-down ]
+  paste_host = /\A(?:[a-z0-9]{32}|#{Regexp.union(vanity_hosts).source})\./
 
   # Each paste is served from its own origin so documents get real, isolated
   # localStorage (no CSP sandbox needed: the separate origin is the isolation).

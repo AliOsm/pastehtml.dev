@@ -119,11 +119,39 @@
     </p>
   </section>
 
-  <section class="mt-16 text-center">
-    <%= link_to "https://lt7vevdode5z6qklozz6w1sr14fwx79e.pastehtml.dev/",
-          class: "inline-block -rotate-1 rounded-lg border-2 border-ink bg-white px-5 py-2.5 shadow-comic-sm hover:bg-hero-yellow/30" do %>
-      <span class="font-display text-2xl tracking-wide text-ink sm:text-xl"><%= t("home.making_of.title") %></span>
-      <span class="mt-0.5 block text-base text-ink/70 sm:text-sm"><%= t("home.making_of.body") %></span>
-    <% end %>
+  <section class="mt-16">
+    <h2 class="font-display text-3xl tracking-wide text-ink sm:text-2xl"><%= t("home.blog.title") %></h2>
+    <ul role="list" class="mt-6 grid gap-6 md:grid-cols-2">
+      <li>
+        <%= link_to "https://making-of.pastehtml.dev/",
+              class: "block h-full -rotate-1 rounded-lg border-3 border-ink bg-white shadow-comic-sm hover:bg-hero-yellow/15" do %>
+          <span aria-hidden="true" class="block h-2.5 rounded-t border-b-3 border-ink bg-hero-red"></span>
+          <div class="p-4">
+            <h3 class="font-display text-2xl tracking-wide text-ink sm:text-xl"><%= t("home.blog.making_of.title") %></h3>
+            <p class="mt-1 text-base text-pretty text-ink/70 sm:text-sm"><%= t("home.blog.making_of.body") %></p>
+          </div>
+        <% end %>
+      </li>
+      <li>
+        <%= link_to "https://lock-it-up.pastehtml.dev/",
+              class: "block h-full rotate-1 rounded-lg border-3 border-ink bg-white shadow-comic-sm hover:bg-hero-yellow/15" do %>
+          <span aria-hidden="true" class="block h-2.5 rounded-t border-b-3 border-ink bg-hero-blue"></span>
+          <div class="p-4">
+            <h3 class="font-display text-2xl tracking-wide text-ink sm:text-xl"><%= t("home.blog.encryption.title") %></h3>
+            <p class="mt-1 text-base text-pretty text-ink/70 sm:text-sm"><%= t("home.blog.encryption.body") %></p>
+          </div>
+        <% end %>
+      </li>
+      <li>
+        <%= link_to "https://mark-it-down.pastehtml.dev/",
+              class: "block h-full -rotate-1 rounded-lg border-3 border-ink bg-white shadow-comic-sm hover:bg-hero-yellow/15" do %>
+          <span aria-hidden="true" class="block h-2.5 rounded-t border-b-3 border-ink bg-hero-yellow"></span>
+          <div class="p-4">
+            <h3 class="font-display text-2xl tracking-wide text-ink sm:text-xl"><%= t("home.blog.markdown.title") %></h3>
+            <p class="mt-1 text-base text-pretty text-ink/70 sm:text-sm"><%= t("home.blog.markdown.body") %></p>
+          </div>
+        <% end %>
+      </li>
+    </ul>
   </section>
 </div>

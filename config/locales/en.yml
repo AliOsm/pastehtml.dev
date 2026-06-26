@@ -41,9 +41,17 @@ en:
       title: "Built for AI agents"
       body: "Agents can publish without a browser: one request returns the share link as JSON, plus a secret token for updating the page later."
       docs_html: "Full agent instructions live at %{link} — just tell your agent to publish here."
-    making_of:
-      title: "Psst… read the making-of!"
-      body: "This whole site was built by a human and an AI in a day — published, of course, as a paste."
+    blog:
+      title: "Straight from the blog"
+      making_of:
+        title: "The Making Of"
+        body: "How a human and an AI built and shipped this whole site in a single day."
+      encryption:
+        title: "Lock It Up"
+        body: "Keeping a shared page private, and where end-to-end encryption fits in."
+      markdown:
+        title: "Mark It Down"
+        body: "From a Markdown draft to a clean, published page."
 
   show:
     meta_description: "An HTML page shared through pastehtml.dev — preview it live or read the source."
