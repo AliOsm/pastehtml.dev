@@ -77,7 +77,8 @@ module Api
           title: paste.display_title,
           live_url: paste_live_url(paste),
           url: paste_url(paste),
-          raw_url: raw_paste_url(paste)
+          raw_url: raw_paste_url(paste),
+          source_url: source_paste_url(paste)
         }
       end
   end

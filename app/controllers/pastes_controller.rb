@@ -7,7 +7,7 @@ class PastesController < ApplicationController
   # any browser -- that's the product's whole promise.
   allow_browser versions: :modern, only: %i[ new create ]
 
-  before_action :set_paste, only: %i[ show raw ]
+  before_action :set_paste, only: %i[ show raw source ]
 
   rate_limit to: 10, within: 1.minute, only: :create,
     with: -> { redirect_to root_path, alert: t("flash.rate_limited_minute") }
@@ -44,6 +44,23 @@ class PastesController < ApplicationController
 
     if stale?(@paste, public: true)
       send_data @paste.content, type: "text/html; charset=utf-8", disposition: :inline
+    end
+  end
+
+  # The paste's bytes, verbatim, for programmatic clients (agents fetching back
+  # what they published). Served as text/plain on purpose: a CDN in front of the
+  # app may post-process text/html responses -- Cloudflare's email obfuscation,
+  # for one, rewrites address-looking strings in transit -- which would corrupt
+  # the `raw`/`live` HTML. text/plain is passed through untouched, so this is the
+  # one endpoint that guarantees an exact, byte-for-byte copy. nosniff (set
+  # app-wide) keeps a browser from reinterpreting it as HTML. ETag-revalidated
+  # like `raw`, since pastes can be republished.
+  def source
+    response.headers["X-Robots-Tag"] = "noindex"
+    response.headers["Referrer-Policy"] = "no-referrer"
+
+    if stale?(@paste, public: true)
+      send_data @paste.content, type: "text/plain; charset=utf-8", disposition: :inline
     end
   end
 

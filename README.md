@@ -27,7 +27,9 @@ can open, preview, and view the source of. No accounts, no editing, no fuss.
   `https://<token>.pastehtml.dev/` — so scripts and localStorage work
   (review-progress checklists persist) while staying fully isolated from
   other pastes and from the app itself. The path-based `/p/<token>/raw`
-  endpoint additionally serves the source inside a CSP `sandbox`.
+  endpoint additionally serves the source inside a CSP `sandbox`, while
+  `/p/<token>/source` returns the same bytes as `text/plain` — a byte-exact
+  copy for programmatic clients, immune to any CDN HTML rewriting in transit.
 
 ## Agent API
 
@@ -43,8 +45,10 @@ curl --data-binary @plan.html -H "Content-Type: text/html" \
   "https://pastehtml.dev/api/pastes?filename=plan.html"
 ```
 
-Both return `201` with `{ token, title, live_url, url, raw_url, update_token }`
-(or `422` with `{ errors }`). The `update_token` is revealed exactly once — the
+Both return `201` with
+`{ token, title, live_url, url, raw_url, source_url, update_token }`
+(or `422` with `{ errors }`). Fetch `source_url` to read a paste's exact bytes
+back (`text/plain`, never rewritten in transit). The `update_token` is revealed exactly once — the
 server stores only a digest — but it stays valid forever and authorizes any
 number of in-place updates:
 
@@ -54,7 +58,7 @@ curl -X PATCH -H "Authorization: Bearer $UPDATE_TOKEN" \
 ```
 
 Updates accept the same two body forms as creation and return `200` with the
-refreshed `{ token, title, live_url, url, raw_url }`, `403` for a wrong or
+refreshed `{ token, title, live_url, url, raw_url, source_url }`, `403` for a wrong or
 missing update token, and `404` for an unknown paste. All API endpoints are
 rate limited per IP.
 

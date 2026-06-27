@@ -27,7 +27,11 @@ Response 201:
                               // (scripts and localStorage work there)
       "url": "https://pastehtml.dev/p/<token>",      // inspector page: copy
                               // link, rendered preview, highlighted source
-      "raw_url": "https://pastehtml.dev/p/<token>/raw",
+      "raw_url": "https://pastehtml.dev/p/<token>/raw",  // the document served
+                              // as text/html (renders in a CSP sandbox)
+      "source_url": "https://pastehtml.dev/p/<token>/source",  // the SAME bytes
+                              // as text/plain -- fetch this to read a paste's
+                              // exact source back; it is never altered in transit
       "update_token": "..."   // secret; revealed ONLY here, never recoverable.
                               // It stays valid forever and works for every
                               // future update -- updates do NOT rotate it.
@@ -44,8 +48,17 @@ Only the holder of a paste's update_token can change it:
       https://pastehtml.dev/api/pastes/<token>
 
 Accepts the same two body forms as publishing. Responses: 200 with the
-refreshed { token, title, live_url, url, raw_url }, 403 for a wrong or
-missing update token, 404 for an unknown paste, 422 for invalid content.
+refreshed { token, title, live_url, url, raw_url, source_url }, 403 for a wrong
+or missing update token, 404 for an unknown paste, 422 for invalid content.
+
+## Read a paste back
+
+GET https://pastehtml.dev/p/<token>/source
+
+Returns the paste's exact bytes as text/plain -- use this when you need to read
+back what was published (for example to diff before an update). The /raw and
+live_url variants serve the same content as text/html and can be rewritten by a
+CDN in transit, so prefer /source for byte-exact reads. No auth required.
 
 ## Rules
 

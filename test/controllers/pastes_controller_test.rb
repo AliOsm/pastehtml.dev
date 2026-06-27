@@ -109,6 +109,37 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "no-referrer", response.headers["Referrer-Policy"]
   end
 
+  test "source serves the html verbatim as plain text" do
+    paste = pastes(:hello)
+
+    get source_paste_url(paste)
+
+    assert_response :success
+    assert_equal paste.content, response.body
+    assert_equal "text/plain; charset=utf-8", response.headers["Content-Type"]
+    assert_nil response.headers["Content-Security-Policy"]
+    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_includes response.headers["X-Robots-Tag"], "noindex"
+  end
+
+  test "source revalidates by etag instead of caching by age" do
+    paste = pastes(:hello)
+
+    get source_paste_url(paste)
+    assert_not_includes response.headers["Cache-Control"], "max-age=31556952"
+    etag = response.headers["ETag"]
+    assert etag.present?
+
+    get source_paste_url(paste), headers: { "If-None-Match" => etag }
+    assert_response :not_modified
+  end
+
+  test "source responds 404 for unknown tokens" do
+    get source_paste_url("nonexistent-token")
+
+    assert_response :not_found
+  end
+
   test "serves the paste from its own origin without a csp sandbox" do
     paste = pastes(:hello)
 
