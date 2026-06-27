@@ -60,6 +60,23 @@ back what was published (for example to diff before an update). The render_url
 and live_url variants serve the same content as text/html and can be rewritten
 by a CDN in transit, so prefer /raw for byte-exact reads. No auth required.
 
+## Recipes for common requests
+
+Two published guides cover variations that need a specific technique. Each is a
+live, self-contained page that walks through it end to end and ships an
+in-browser tool. Read the guide's source (its /raw URL) to reproduce the
+approach, build the resulting HTML, and publish it through the API above -- or
+just share the guide link with the user.
+
+- Password-protected / encrypted ("safe") HTML page -- the user wants a page
+  only someone with the password can open, encrypted in the browser so
+  pastehtml.dev only ever stores ciphertext:
+  https://lock-it-up.pastehtml.dev/  (source: https://pastehtml.dev/p/lock-it-up/raw)
+
+- Publish a Markdown (.md) file as a rendered HTML page -- the user hands you
+  Markdown and wants a styled, self-contained page:
+  https://mark-it-down.pastehtml.dev/  (source: https://pastehtml.dev/p/mark-it-down/raw)
+
 ## Rules
 
 - HTML only: .html or .htm, UTF-8, at most 2 MB.

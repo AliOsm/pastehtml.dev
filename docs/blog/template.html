@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!--
+  pastehtml.dev — blog-post template
+  ==================================
+  A self-contained, bilingual (English/LTR + Arabic/RTL) HTML page that matches
+  the comic-book design of the published posts (making-of, lock-it-up,
+  mark-it-down). Drop in your content and publish it as an ordinary paste.
+
+  WHAT TO EDIT (search for  >>>  markers):
+    1. The <html> data-* attributes: a unique slug + the EN/AR page titles.
+    2. <title> and <meta name="description">.
+    3. The English content inside  <div id="en">  and its Arabic mirror in
+       <div id="ar">  (headline, subtitle, chips, body, footer).
+    4. Post-specific CSS -> the SECOND <style> block.
+    5. Post-specific libraries/scripts -> just before the shared <script>.
+
+  KEEP IDENTICAL ACROSS POSTS (this is the actual "template"):
+    - the first <style> block (base chrome + language-switcher pill),
+    - the .lang-toggle markup,
+    - the trailing <script> (language switcher).
+    Editing these in one place and re-applying keeps every post consistent.
+
+  PUBLISH (full contract at https://pastehtml.dev/llms.txt):
+    curl -F "file=@my-post.html" https://pastehtml.dev/api/pastes
+    # Save the returned update_token to revise the post later (PATCH).
+  VANITY SUBDOMAIN (optional, e.g. my-post.pastehtml.dev):
+    add the slug to `vanity_hosts` in config/routes.rb.
+-->
+<html lang="en"
+      data-lang-key="pastehtml-SLUG-lang"
+      data-title-en=">>> Post title (English) <<<"
+      data-title-ar=">>> عنوان التدوينة (بالعربية) <<<">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&family=Lalezar&family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap">
+<!-- Favicon: the app's own icon, by absolute URL (pastes run on their own origin). -->
+<link rel="icon" href="https://pastehtml.dev/icon.png" type="image/png">
+<link rel="icon" href="https://pastehtml.dev/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="https://pastehtml.dev/icon.png">
+<title>>>> Post title (English) <<<</title>
+<meta name="description" content=">>> One-sentence summary for search engines and social cards. <<<">
+<!-- >>> Optional: post-specific stylesheet <link>s (e.g. a highlight.js theme). <<< -->
+
+<style>
+  /* ===== Shared template: base chrome (byte-identical across all pastes) ===== */
+  :root {
+    --ink: #18120e;
+    --paper: #fff8ec;
+    --red: #e62429;
+    --yellow: #ffd400;
+    --blue: #0072ce;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(circle at 25% 15%, rgb(255 212 0 / 0.18), transparent 42%),
+      radial-gradient(circle at 85% 80%, rgb(0 114 206 / 0.10), transparent 45%),
+      radial-gradient(circle, rgb(24 18 14 / 0.07) 1px, transparent 1.4px);
+    background-size: auto, auto, 12px 12px;
+    color: var(--ink);
+    font-family: Inter, "IBM Plex Sans Arabic", system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 56rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  .bangers { font-family: Bangers, Lalezar, Impact, sans-serif; letter-spacing: 0.02em; }
+  .mono { font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; }
+
+  /* Language switcher pill (appearance only; each page sets its own corner) */
+  .lang-toggle {
+    position: fixed; top: 0.8rem; right: 0.8rem; z-index: 50; direction: ltr;
+    display: inline-flex; align-items: center; transform: rotate(1deg);
+    background: #fff; border: 2px solid var(--ink); border-radius: 0.375rem;
+    box-shadow: 4px 4px 0 0 var(--ink); overflow: hidden;
+    font-family: Bangers, Lalezar, Impact, sans-serif; font-size: 1rem; line-height: 1.5rem; letter-spacing: 0.025em;
+  }
+  .lang-toggle button {
+    appearance: none; -webkit-appearance: none; border: 0; background: transparent;
+    cursor: pointer; font: inherit; letter-spacing: inherit; color: rgb(24 18 14 / 0.6);
+    padding: 0.125rem 0.625rem;
+  }
+  .lang-toggle button + button { border-left: 2px solid var(--ink); }
+  .lang-toggle button:not([aria-pressed="true"]):hover { background: var(--yellow); color: var(--ink); }
+  .lang-toggle button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  /* Pinned to the inline-end like the app header: right in LTR, left in RTL.
+     direction:ltr keeps the EN | عربي order stable in both. */
+  [dir="rtl"] .lang-toggle { right: auto; left: 0.8rem; }
+</style>
+
+<style>
+  /* ===== Per-post styles ===== Comic defaults shared by the existing posts.
+     Tweak freely, and add this post's section/widget CSS at the bottom. */
+  a { color: var(--blue); }
+
+  /* Hero */
+  header { text-align: center; padding: 2rem 0 1rem; position: relative; }
+  .logo {
+    display: inline-block; background: #fff; border: 3px solid var(--ink); border-radius: 10px;
+    box-shadow: 5px 5px 0 0 var(--ink); padding: 0.2rem 1.1rem; transform: rotate(-2deg);
+    font-size: 1.6rem; color: var(--ink); text-decoration: none; cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .logo:hover { transform: rotate(-2deg) translate(-1px, -1px); box-shadow: 6px 6px 0 0 var(--ink); }
+  .logo:active { transform: rotate(-2deg) translate(2px, 2px); box-shadow: 2px 2px 0 0 var(--ink); }
+  .logo span { color: var(--red); }
+  h1 {
+    font-size: clamp(2.7rem, 8.5vw, 5rem); line-height: 1.02; margin-top: 1.5rem;
+    text-shadow: 3px 3px 0 var(--paper), 6px 6px 0 var(--red); text-wrap: balance;
+  }
+  .sub { margin: 1.25rem auto 0; max-width: 46ch; color: rgb(24 18 14 / 0.7); font-size: 1.05rem; text-wrap: pretty; }
+  .badge-row { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+  .chip {
+    background: var(--yellow); border: 2px solid var(--ink); box-shadow: 3px 3px 0 0 var(--ink);
+    padding: 0.15rem 0.7rem; font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; font-size: 0.72rem;
+    letter-spacing: 0.08em; text-transform: uppercase; transform: rotate(-1deg);
+  }
+  .chip:nth-child(2n) { transform: rotate(1.2deg); background: #fff; }
+  .burst {
+    position: absolute; top: -0.5rem; right: 0; width: 110px; transform: rotate(14deg);
+    filter: drop-shadow(3px 3px 0 var(--ink));
+  }
+  @media (max-width: 640px) { .burst { width: 78px; right: -0.25rem; } }
+
+  /* Section dividers */
+  .issue { margin: 3.5rem 0 1.75rem; display: flex; align-items: center; gap: 1rem; }
+  .issue::before, .issue::after { content: ""; flex: 1; border-top: 3px solid var(--ink); }
+  .issue h2 {
+    font-family: Bangers, Lalezar, Impact, sans-serif; letter-spacing: 0.03em; font-size: 1.6rem;
+    background: var(--ink); color: var(--paper); border-radius: 8px; padding: 0.25rem 1.2rem;
+    box-shadow: 4px 4px 0 0 var(--red); transform: rotate(-1deg); text-align: center;
+  }
+
+  /* Prose */
+  p.lede { font-size: 1.05rem; }
+  .wrap p + p { margin-top: 0.9rem; }
+  code {
+    font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; font-size: 0.83em; background: rgb(24 18 14 / 0.07);
+    border-radius: 4px; padding: 0.05rem 0.3rem;
+  }
+  pre {
+    background: var(--ink); color: var(--paper); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: 5px 5px 0 0 var(--red); padding: 1rem 1.1rem; overflow-x: auto; margin: 1.2rem 0;
+  }
+  pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--paper); }
+
+  /* Footer */
+  footer {
+    margin-top: 4rem; text-align: center; border-top: 3px solid var(--ink); padding-top: 2rem;
+    color: rgb(24 18 14 / 0.7); font-size: 0.9rem;
+  }
+  footer .bangers { font-size: 1.6rem; color: var(--ink); display: block; margin-bottom: 0.6rem; }
+  footer p + p { margin-top: 0.4rem; }
+
+  /* ---- RTL adjustments for the Arabic edition ---- */
+  [dir="rtl"] * { letter-spacing: normal; }            /* Arabic is cursive; spacing severs joins. */
+  [dir="rtl"] code, [dir="rtl"] .mono { unicode-bidi: isolate; }
+  [dir="rtl"] code { direction: ltr; }
+  [dir="rtl"] h1 { line-height: 1.3; }                 /* Lalezar needs real leading on the big head. */
+  [dir="rtl"] .burst { right: auto; left: 0; transform: rotate(-14deg); }
+  @media (max-width: 640px) { [dir="rtl"] .burst { left: -0.25rem; right: auto; } }
+
+  /* >>> Add this post's section/widget CSS below <<< */
+</style>
+</head>
+
+<body>
+
+<!-- Shared template: language switcher (keep as-is) -->
+<div class="lang-toggle" role="group" aria-label="Language / اللغة">
+  <button type="button" data-lang="en" lang="en">EN</button>
+  <button type="button" data-lang="ar" lang="ar" dir="rtl">عربي</button>
+</div>
+
+<!-- ============================== ENGLISH ============================== -->
+<div class="wrap" id="en" data-lang="en">
+
+<header>
+  <svg class="burst" viewBox="0 0 120 120" aria-hidden="true">
+    <polygon fill="#e62429" stroke="#18120e" stroke-width="3"
+      points="60,4 71,26 93,13 91,38 116,37 99,55 120,68 96,74 105,98 81,90 78,115 60,96 42,115 39,90 15,98 24,74 0,68 21,55 4,37 29,38 27,13 49,26"/>
+    <text text-anchor="middle" font-family="Bangers, Lalezar, Impact, sans-serif" font-size="20" fill="#fff" transform="rotate(-8 60 60)"><tspan x="60" y="68">New!</tspan></text>
+  </svg>
+  <a href="https://pastehtml.dev" class="logo bangers">pastehtml<span>.dev</span></a>
+  <h1 class="bangers">>>> Headline (English) <<<</h1>
+  <p class="sub">>>> One or two sentences introducing the post. <<<</p>
+  <div class="badge-row">
+    <span class="chip">Tag one</span>
+    <span class="chip">Tag two</span>
+  </div>
+</header>
+
+<div class="issue"><h2>Section title</h2></div>
+<p class="lede">>>> Opening paragraph of the English article. <<<</p>
+<p>>>> More body content. Use &lt;code&gt;, &lt;pre&gt;, &lt;ol class="..."&gt;, panels, etc. <<<</p>
+
+<footer>
+  <div class="bangers">The End.</div>
+  <p><a href="https://pastehtml.dev">pastehtml.dev</a> — share HTML in seconds. Free · Anonymous · Instant.</p>
+</footer>
+
+</div><!-- /#en -->
+
+<!-- =============================== ARABIC ============================== -->
+<div class="wrap" id="ar" data-lang="ar" dir="rtl" hidden>
+
+<header>
+  <svg class="burst" viewBox="0 0 120 120" aria-hidden="true">
+    <polygon fill="#e62429" stroke="#18120e" stroke-width="3"
+      points="60,4 71,26 93,13 91,38 116,37 99,55 120,68 96,74 105,98 81,90 78,115 60,96 42,115 39,90 15,98 24,74 0,68 21,55 4,37 29,38 27,13 49,26"/>
+    <text text-anchor="middle" font-family="Lalezar, Bangers, Impact, sans-serif" font-size="20" fill="#fff" transform="rotate(-8 60 60)"><tspan x="60" y="68">جديد!</tspan></text>
+  </svg>
+  <a href="https://pastehtml.dev" class="logo bangers">pastehtml<span>.dev</span></a>
+  <h1 class="bangers">>>> العنوان (بالعربية) <<<</h1>
+  <p class="sub">>>> جملة أو جملتان للتعريف بالتدوينة. <<<</p>
+  <div class="badge-row">
+    <span class="chip">وسم ١</span>
+    <span class="chip">وسم ٢</span>
+  </div>
+</header>
+
+<div class="issue"><h2>عنوان القسم</h2></div>
+<p class="lede">>>> الفقرة الافتتاحية للمقال بالعربية. <<<</p>
+<p>>>> بقيّة المحتوى. أبقِ المقاطع اللاتينية (مثل &lt;code&gt;) كما هي ضمن النص العربي. <<<</p>
+
+<footer>
+  <div class="bangers">النهاية.</div>
+  <p><a href="https://pastehtml.dev">pastehtml.dev</a> — شارك HTML في ثوانٍ. مجانًا · بلا هوية · فوري.</p>
+</footer>
+
+</div><!-- /#ar -->
+
+<!-- >>> Add post-specific libraries/scripts here (before the shared switcher). <<< -->
+
+<!-- Shared template: language switcher logic (keep as-is) -->
+<script>
+/* Shared template: language switcher. Per-page config lives on <html>:
+   data-lang-key (localStorage key), data-title-en / data-title-ar. */
+(function () {
+  var root = document.documentElement;
+  var KEY = root.getAttribute("data-lang-key") || "pastehtml-lang";
+  var TITLES = { en: root.getAttribute("data-title-en"), ar: root.getAttribute("data-title-ar") };
+  var en = document.getElementById("en");
+  var ar = document.getElementById("ar");
+  var buttons = document.querySelectorAll(".lang-toggle button");
+
+  function apply(lang) {
+    var isAr = lang === "ar";
+    en.hidden = isAr;
+    ar.hidden = !isAr;
+    root.lang = isAr ? "ar" : "en";
+    root.dir = isAr ? "rtl" : "ltr";
+    if (TITLES.en && TITLES.ar) document.title = isAr ? TITLES.ar : TITLES.en;
+    buttons.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.lang === lang)); });
+    try { localStorage.setItem(KEY, lang); } catch (e) {}
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+  var initial = saved || ((navigator.language || "").toLowerCase().indexOf("ar") === 0 ? "ar" : "en");
+  apply(initial);
+
+  buttons.forEach(function (b) { b.addEventListener("click", function () { apply(b.dataset.lang); }); });
+})();
+</script>
+</body>
+</html>
