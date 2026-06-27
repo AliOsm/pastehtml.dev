@@ -15,6 +15,7 @@ module Api
       assert_match %r{/p/#{body["token"]}\z}, body["url"]
       assert_equal "http://#{body["token"]}.example.com/", body["live_url"]
       assert_match %r{/p/#{body["token"]}/raw\z}, body["raw_url"]
+      assert_match %r{/p/#{body["token"]}/render\z}, body["render_url"]
     end
 
     test "publishes a raw html body with a filename param" do

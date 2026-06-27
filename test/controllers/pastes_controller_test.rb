@@ -96,10 +96,10 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "raw serves the html verbatim inside a csp sandbox" do
+  test "render serves the html verbatim inside a csp sandbox" do
     paste = pastes(:hello)
 
-    get raw_paste_url(paste)
+    get render_paste_url(paste)
 
     assert_response :success
     assert_equal paste.content, response.body
@@ -107,6 +107,25 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.headers["Content-Security-Policy"], "sandbox"
     assert_not_includes response.headers["Content-Security-Policy"], "allow-same-origin"
     assert_equal "no-referrer", response.headers["Referrer-Policy"]
+  end
+
+  test "raw serves the html verbatim as plain text" do
+    paste = pastes(:hello)
+
+    get raw_paste_url(paste)
+
+    assert_response :success
+    assert_equal paste.content, response.body
+    assert_equal "text/plain; charset=utf-8", response.headers["Content-Type"]
+    assert_nil response.headers["Content-Security-Policy"]
+    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_includes response.headers["X-Robots-Tag"], "noindex"
+  end
+
+  test "raw responds 404 for unknown tokens" do
+    get raw_paste_url("nonexistent-token")
+
+    assert_response :not_found
   end
 
   test "serves the paste from its own origin without a csp sandbox" do
