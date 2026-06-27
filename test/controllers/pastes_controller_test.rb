@@ -96,10 +96,10 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "raw serves the html verbatim inside a csp sandbox" do
+  test "render serves the html verbatim inside a csp sandbox" do
     paste = pastes(:hello)
 
-    get raw_paste_url(paste)
+    get render_paste_url(paste)
 
     assert_response :success
     assert_equal paste.content, response.body
@@ -109,10 +109,10 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "no-referrer", response.headers["Referrer-Policy"]
   end
 
-  test "source serves the html verbatim as plain text" do
+  test "raw serves the html verbatim as plain text" do
     paste = pastes(:hello)
 
-    get source_paste_url(paste)
+    get raw_paste_url(paste)
 
     assert_response :success
     assert_equal paste.content, response.body
@@ -122,20 +122,8 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.headers["X-Robots-Tag"], "noindex"
   end
 
-  test "source revalidates by etag instead of caching by age" do
-    paste = pastes(:hello)
-
-    get source_paste_url(paste)
-    assert_not_includes response.headers["Cache-Control"], "max-age=31556952"
-    etag = response.headers["ETag"]
-    assert etag.present?
-
-    get source_paste_url(paste), headers: { "If-None-Match" => etag }
-    assert_response :not_modified
-  end
-
-  test "source responds 404 for unknown tokens" do
-    get source_paste_url("nonexistent-token")
+  test "raw responds 404 for unknown tokens" do
+    get raw_paste_url("nonexistent-token")
 
     assert_response :not_found
   end

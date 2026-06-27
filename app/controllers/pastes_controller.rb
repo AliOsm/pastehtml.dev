@@ -7,7 +7,7 @@ class PastesController < ApplicationController
   # any browser -- that's the product's whole promise.
   allow_browser versions: :modern, only: %i[ new create ]
 
-  before_action :set_paste, only: %i[ show raw source ]
+  before_action :set_paste, only: %i[ show raw rendered ]
 
   rate_limit to: 10, within: 1.minute, only: :create,
     with: -> { redirect_to root_path, alert: t("flash.rate_limited_minute") }
@@ -33,34 +33,35 @@ class PastesController < ApplicationController
     response.headers["X-Robots-Tag"] = "noindex"
   end
 
-  # Serves the paste verbatim inside an opaque origin: the CSP sandbox (without
-  # allow-same-origin) keeps untrusted HTML from touching cookies, storage, or
-  # anything else on this domain. Cached by ETag revalidation, never by age:
-  # pastes can be republished through the API, so caches must always recheck.
+  # The paste's bytes, verbatim -- the canonical fetch for programmatic clients
+  # (agents reading back what they published). Served as text/plain on purpose:
+  # a CDN in front of the app may post-process text/html responses -- Cloudflare's
+  # email obfuscation, for one, rewrites address-looking strings in transit --
+  # which would corrupt the bytes. text/plain is passed through untouched, so
+  # this guarantees an exact, byte-for-byte copy. nosniff (set app-wide) keeps a
+  # browser from reinterpreting it as HTML. Cached by ETag revalidation, never by
+  # age: pastes can be republished through the API, so caches must always recheck.
   def raw
+    response.headers["X-Robots-Tag"] = "noindex"
+    response.headers["Referrer-Policy"] = "no-referrer"
+
+    if stale?(@paste, public: true)
+      send_data @paste.content, type: "text/plain; charset=utf-8", disposition: :inline
+    end
+  end
+
+  # Renders the paste as HTML inside an opaque origin: the CSP sandbox (without
+  # allow-same-origin) keeps untrusted HTML from touching cookies, storage, or
+  # anything else on this domain. The action is `rendered` because `render` is
+  # reserved by ActionController; the public path is /p/<token>/render. ETag-
+  # revalidated like `raw`, since pastes can be republished.
+  def rendered
     response.headers["Content-Security-Policy"] = "sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads"
     response.headers["X-Robots-Tag"] = "noindex"
     response.headers["Referrer-Policy"] = "no-referrer"
 
     if stale?(@paste, public: true)
       send_data @paste.content, type: "text/html; charset=utf-8", disposition: :inline
-    end
-  end
-
-  # The paste's bytes, verbatim, for programmatic clients (agents fetching back
-  # what they published). Served as text/plain on purpose: a CDN in front of the
-  # app may post-process text/html responses -- Cloudflare's email obfuscation,
-  # for one, rewrites address-looking strings in transit -- which would corrupt
-  # the `raw`/`live` HTML. text/plain is passed through untouched, so this is the
-  # one endpoint that guarantees an exact, byte-for-byte copy. nosniff (set
-  # app-wide) keeps a browser from reinterpreting it as HTML. ETag-revalidated
-  # like `raw`, since pastes can be republished.
-  def source
-    response.headers["X-Robots-Tag"] = "noindex"
-    response.headers["Referrer-Policy"] = "no-referrer"
-
-    if stale?(@paste, public: true)
-      send_data @paste.content, type: "text/plain; charset=utf-8", disposition: :inline
     end
   end
 
