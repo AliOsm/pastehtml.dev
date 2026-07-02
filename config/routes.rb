@@ -35,6 +35,7 @@ Rails.application.routes.draw do
     get "p/:token", to: "pastes#show", as: :paste
     get "p/:token/raw", to: "pastes#raw", as: :raw_paste
     get "p/:token/render", to: "pastes#rendered", as: :render_paste
+    get "p/:token/markdown", to: "pastes#markdown", as: :markdown_paste
   end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

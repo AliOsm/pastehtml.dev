@@ -62,6 +62,15 @@ class Paste < ApplicationRecord
     updated_at > created_at
   end
 
+  # Best-effort HTML-to-Markdown of the paste's content, for /p/<token>/markdown.
+  # github_flavored gives fenced code blocks and tables; the conversion is lossy
+  # and one-way (interactive/JS-heavy pastes reduce to little), which is expected
+  # -- it's a convenience view, not a canonical representation. Never raises on
+  # malformed markup: Nokogiri (which reverse_markdown uses) parses leniently.
+  def to_markdown
+    ReverseMarkdown.convert(content, github_flavored: true)
+  end
+
   private
     def assign_token
       self.token = generate_unique_token
