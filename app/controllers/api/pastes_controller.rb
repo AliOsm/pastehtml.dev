@@ -22,7 +22,8 @@ module Api
     end
 
     def create
-      paste = Paste.new(content: submitted_content, original_filename: submitted_filename || "untitled.html")
+      filename = submitted_filename || default_filename
+      paste = Paste.new(content: Paste.render_content(submitted_content, filename), original_filename: filename)
 
       if paste.save
         render json: payload(paste).merge(update_token: paste.update_token), status: :created
@@ -53,6 +54,16 @@ module Api
 
       def submitted_filename
         upload ? upload.original_filename : params[:filename].presence
+      end
+
+      # A raw body sent as text/markdown gets a .md default so it's rendered
+      # (multipart uploads carry their own filename via `submitted_filename`).
+      def default_filename
+        markdown_request? ? "untitled.md" : "untitled.html"
+      end
+
+      def markdown_request?
+        request.media_type.to_s.match?(%r{\Atext/(x-)?markdown\z})
       end
 
       def raw_content

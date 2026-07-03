@@ -22,7 +22,7 @@ ar:
       heading: أفلِت ملف HTML هنا!
       browse: تصفّح ملفاتك
       browse_html: أو %{browse} · أو الصق HTML مباشرةً (%{paste})
-      constraints_html: "%{html} أو %{htm} · حتى %{size}"
+      constraints_html: "%{html} أو %{htm} أو %{md} · حتى %{size}"
       publishing: جارٍ نشر صفحتك…
       publishing_hint: لن يستغرق الأمر سوى لحظة.
       choose_file: اختر ملف HTML
@@ -76,7 +76,7 @@ ar:
       iframe_title: معاينة %{filename}
       isolation_html: 'تعمل كل صفحة في بيئة معزولة خاصة بها: تعمل بداخلها النصوص البرمجية والتخزين المحلي بشكل كامل، لكنها لا تستطيع الوصول إلى هذا الموقع أو إلى الصفحات الأخرى مطلقًا. اضغط %{fullscreen_key} لملء الشاشة، أو %{exit_key} للخروج.'
   dropzone_errors:
-    not_html_file: لا يبدو هذا ملف HTML. اختر ملف .html أو .htm.
+    not_html_file: لا يبدو هذا ملف HTML أو Markdown. اختر ملف .html أو .htm أو .md.
     empty: هذا الملف فارغ.
     too_large: حجم هذا الملف أكبر من 2 MB.
     not_html_clipboard: لا يبدو محتوى الحافظة بصيغة HTML. يجب أن يبدأ بوسم.
@@ -123,7 +123,7 @@ ar:
         paste:
           attributes:
             original_filename:
-              not_html: يجب أن يكون ملف .html أو .htm
+              not_html: يجب أن يكون ملف .html أو .htm أو .md أو .markdown
             content:
               blank: لا يمكن أن يكون فارغًا
               too_large: كبير جدًا (الحد الأقصى 2 MB)

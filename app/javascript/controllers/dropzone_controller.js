@@ -101,7 +101,7 @@ export default class extends Controller {
   }
 
   problemWith(file) {
-    if (!/\.html?$/i.test(file.name)) return this.notHtmlFileValue
+    if (!/\.(html?|md|markdown)$/i.test(file.name)) return this.notHtmlFileValue
     if (file.size === 0) return this.emptyValue
     if (file.size > MAX_BYTES) return this.tooLargeValue
     return null
