@@ -128,6 +128,37 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "markdown serves the paste converted to markdown" do
+    paste = Paste.create!(content: "<h1>Heading</h1><p>Some <em>prose</em>.</p>", original_filename: "doc.html")
+
+    get markdown_paste_url(paste)
+
+    assert_response :success
+    assert_equal "text/markdown; charset=utf-8", response.headers["Content-Type"]
+    assert_includes response.body, "# Heading"
+    assert_includes response.body, "_prose_"
+    assert_equal "no-referrer", response.headers["Referrer-Policy"]
+    assert_includes response.headers["X-Robots-Tag"], "noindex"
+  end
+
+  test "markdown revalidates by etag instead of caching by age" do
+    paste = pastes(:hello)
+
+    get markdown_paste_url(paste)
+    assert_not_includes response.headers["Cache-Control"], "max-age=31556952"
+    etag = response.headers["ETag"]
+    assert etag.present?
+
+    get markdown_paste_url(paste), headers: { "If-None-Match" => etag }
+    assert_response :not_modified
+  end
+
+  test "markdown responds 404 for unknown tokens" do
+    get markdown_paste_url("nonexistent-token")
+
+    assert_response :not_found
+  end
+
   test "serves the paste from its own origin without a csp sandbox" do
     paste = pastes(:hello)
 

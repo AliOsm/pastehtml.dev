@@ -7,7 +7,7 @@ class PastesController < ApplicationController
   # any browser -- that's the product's whole promise.
   allow_browser versions: :modern, only: %i[ new create ]
 
-  before_action :set_paste, only: %i[ show raw rendered ]
+  before_action :set_paste, only: %i[ show raw rendered markdown ]
 
   rate_limit to: 10, within: 1.minute, only: :create,
     with: -> { redirect_to root_path, alert: t("flash.rate_limited_minute") }
@@ -47,6 +47,20 @@ class PastesController < ApplicationController
 
     if stale?(@paste, public: true)
       send_data @paste.content, type: "text/plain; charset=utf-8", disposition: :inline
+    end
+  end
+
+  # The paste converted to Markdown -- a convenience, best-effort view for
+  # readers who want the prose without the markup. Served inline as text/markdown
+  # (nosniff keeps a browser from reinterpreting it). Unlike `raw`, this is a
+  # derived, lossy representation, not the canonical bytes; ETag-revalidated the
+  # same way, since republishing a paste changes its Markdown too.
+  def markdown
+    response.headers["X-Robots-Tag"] = "noindex"
+    response.headers["Referrer-Policy"] = "no-referrer"
+
+    if stale?(@paste, public: true)
+      send_data @paste.to_markdown, type: "text/markdown; charset=utf-8", disposition: :inline
     end
   end
 

@@ -129,6 +129,23 @@ class PasteTest < ActiveSupport::TestCase
     assert paste.title.length <= Paste::MAX_TITLE_LENGTH
   end
 
+  test "converts its html content to markdown" do
+    paste = create_paste(content: "<h1>Title</h1><p>Hello <strong>world</strong></p><ul><li>one</li><li>two</li></ul>")
+
+    markdown = paste.to_markdown
+
+    assert_includes markdown, "# Title"
+    assert_includes markdown, "**world**"
+    assert_includes markdown, "- one"
+    assert_includes markdown, "- two"
+  end
+
+  test "to_markdown does not raise on malformed html" do
+    paste = create_paste(content: "<p>unterminated <strong>bold")
+
+    assert_nothing_raised { paste.to_markdown }
+  end
+
   test "from_upload scrubs invalid utf-8 bytes" do
     upload = Rack::Test::UploadedFile.new(
       StringIO.new("<p>caf\xE9</p>".b), "text/html", original_filename: "cafe.html"
