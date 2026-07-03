@@ -42,6 +42,26 @@ Response 201:
 
 422 with { "errors": [...] } when the content is invalid.
 
+## Publish Markdown
+
+Upload Markdown and the server renders it into a styled, self-contained HTML
+page in the pastehtml.dev look -- GitHub-flavored (tables, task lists,
+strikethrough, footnotes, autolinks) with fenced `mermaid` blocks rendered as
+diagrams. Markdown is detected by a .md/.markdown filename or a text/markdown
+content type:
+
+    # Multipart file upload
+    curl -F "file=@notes.md" https://pastehtml.dev/api/pastes
+
+    # Raw Markdown body
+    curl --data-binary @notes.md -H "Content-Type: text/markdown" \
+      https://pastehtml.dev/api/pastes
+
+The stored paste IS HTML, so the response is exactly the same shape as an HTML
+publish and every URL (live_url, url, raw_url, render_url, markdown_url) works
+as usual. Raw HTML embedded in the Markdown is dropped -- use the plain HTML
+upload above if you need arbitrary markup.
+
 ## Update
 
 Only the holder of a paste's update_token can change it:
@@ -77,7 +97,9 @@ just share the guide link with the user.
   https://lock-it-up.pastehtml.dev/  (source: https://pastehtml.dev/p/lock-it-up/raw)
 
 - Publish a Markdown (.md) file as a rendered HTML page -- the user hands you
-  Markdown and wants a styled, self-contained page:
+  Markdown and wants a styled, self-contained page. Simplest path is to just
+  upload the .md (see "Publish Markdown" above); this guide is the no-server
+  alternative that builds the page in the browser and adds a live preview:
   https://mark-it-down.pastehtml.dev/  (source: https://pastehtml.dev/p/mark-it-down/raw)
 
 ## Rules
