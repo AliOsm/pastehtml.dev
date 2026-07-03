@@ -56,7 +56,21 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to root_url
-    assert_match(/must be an .html or .htm file/, flash[:alert])
+    assert_match(/must be an .html/, flash[:alert])
+  end
+
+  test "creating a paste from a markdown file renders and redirects to its page" do
+    assert_difference "Paste.count" do
+      post pastes_url, params: { file: fixture_file_upload("sample.md", "text/markdown") }
+    end
+
+    token = @response.redirect_url[%r{/p/([a-z0-9]+)\z}, 1]
+    paste = Paste.find_by!(token:)
+    assert_equal "sample.md", paste.original_filename
+    assert_includes paste.content, 'class="md-body"'
+    assert_includes paste.content, ">Sample Doc</h1>"
+    assert_includes paste.content, '<pre class="mermaid">'
+    assert_equal "Sample Doc", paste.title
   end
 
   test "show displays the share link, preview and source" do

@@ -61,7 +61,7 @@
                 browse: tag.span(t("home.dropzone.browse"), class: "font-semibold text-hero-blue underline decoration-2 underline-offset-4"),
                 paste: tag.kbd("⌘V", class: "rounded border border-ink/30 bg-paper px-1 font-mono text-xs", dir: "ltr")) %></span>
           <span class="font-mono text-xs text-ink/50"><%= t("home.dropzone.constraints_html",
-                html: tag.bdi(".html", dir: "ltr"), htm: tag.bdi(".htm", dir: "ltr"), size: tag.bdi("2 MB", dir: "ltr")) %></span>
+                html: tag.bdi(".html", dir: "ltr"), htm: tag.bdi(".htm", dir: "ltr"), md: tag.bdi(".md", dir: "ltr"), size: tag.bdi("2 MB", dir: "ltr")) %></span>
         </span>
 
         <span class="flex flex-col items-center gap-4 not-group-data-busy:hidden">
@@ -77,7 +77,7 @@
       </button>
       <p class="t-error-msg mt-4 text-center text-base font-semibold text-hero-red sm:text-sm" data-dropzone-target="error" aria-live="polite"><%= flash[:alert] %></p>
     </div>
-    <%= form.file_field :file, accept: ".html,.htm,text/html", class: "sr-only", tabindex: -1,
+    <%= form.file_field :file, accept: ".html,.htm,.md,.markdown,text/html,text/markdown", class: "sr-only", tabindex: -1,
           aria: { label: t("home.dropzone.choose_file") },
           data: { dropzone_target: "input", action: "change->dropzone#fileSelected" } %>
   <% end %>

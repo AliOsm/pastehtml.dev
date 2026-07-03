@@ -146,6 +146,49 @@ class PasteTest < ActiveSupport::TestCase
     assert_nothing_raised { paste.to_markdown }
   end
 
+  test "accepts .md and .markdown filenames" do
+    assert Paste.new(content: "<h1>Hi</h1>", original_filename: "notes.md").valid?
+    assert Paste.new(content: "<h1>Hi</h1>", original_filename: "notes.markdown").valid?
+  end
+
+  test "from_upload renders a markdown upload into a branded html page" do
+    upload = Rack::Test::UploadedFile.new(
+      StringIO.new("# Title\n\nHello **world**"), "text/markdown", original_filename: "notes.md"
+    )
+
+    paste = Paste.from_upload(upload)
+
+    assert_equal "notes.md", paste.original_filename
+    assert_includes paste.content, 'class="md-body"'
+    assert_includes paste.content, "<strong>world</strong>"
+    assert paste.valid?
+  end
+
+  test "extracts the title from a rendered markdown upload" do
+    upload = Rack::Test::UploadedFile.new(
+      StringIO.new("# The Heading\n\nbody"), "text/markdown", original_filename: "notes.md"
+    )
+
+    paste = Paste.from_upload(upload)
+    paste.save!
+
+    assert_equal "The Heading", paste.title
+  end
+
+  test "render_content leaves html uploads untouched" do
+    assert_equal "<h1>Hi</h1>", Paste.render_content("<h1>Hi</h1>", "page.html")
+  end
+
+  test "republish re-renders when the paste originated from markdown" do
+    paste = Paste.create!(content: Paste.render_content("# One", "doc.md"), original_filename: "doc.md")
+    assert_includes paste.content, ">One</h1>"
+
+    paste.republish(content: "# Two")
+
+    assert_includes paste.reload.content, ">Two</h1>"
+    assert_includes paste.content, 'class="md-body"'
+  end
+
   test "from_upload scrubs invalid utf-8 bytes" do
     upload = Rack::Test::UploadedFile.new(
       StringIO.new("<p>caf\xE9</p>".b), "text/html", original_filename: "cafe.html"

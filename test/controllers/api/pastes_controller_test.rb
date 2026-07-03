@@ -34,6 +34,34 @@ module Api
       assert_equal "plan.html", paste.original_filename
     end
 
+    test "renders a raw markdown body sent as text/markdown" do
+      assert_difference "Paste.count" do
+        post api_pastes_url, params: "# Hello\n\nBody **text**.",
+          headers: { "Content-Type" => "text/markdown" }
+      end
+
+      assert_response :created
+      body = response.parsed_body
+      assert_equal "Hello", body["title"]
+
+      paste = Paste.find_by!(token: body["token"])
+      assert_equal "untitled.md", paste.original_filename
+      assert_includes paste.content, 'class="md-body"'
+      assert_includes paste.content, "<strong>text</strong>"
+    end
+
+    test "renders a multipart markdown upload by its .md filename" do
+      post api_pastes_url, params: { file: fixture_file_upload("sample.md", "text/markdown") }
+
+      assert_response :created
+      body = response.parsed_body
+      assert_equal "Sample Doc", body["title"]
+
+      paste = Paste.find_by!(token: body["token"])
+      assert_equal "sample.md", paste.original_filename
+      assert_includes paste.content, '<pre class="mermaid">'
+    end
+
     test "defaults the filename for raw bodies" do
       post api_pastes_url, params: "<p>Hi</p>", headers: { "Content-Type" => "text/html" }
 

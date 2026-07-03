@@ -65,6 +65,9 @@ gem "rouge", "~> 5.0"
 # Converts a paste's HTML into Markdown for the /p/<token>/markdown endpoint.
 gem "reverse_markdown", "~> 3.0"
 
+# GitHub-flavored Markdown -> HTML for markdown uploads (cmark-gfm/comrak).
+gem "commonmarker", "~> 2.0"
+
 gem "meta-tags", "~> 2.23"
 
 # Trust Cloudflare's IP ranges so remote_ip (and the per-IP rate limits) see

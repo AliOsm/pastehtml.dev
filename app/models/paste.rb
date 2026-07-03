@@ -5,6 +5,9 @@ class Paste < ApplicationRecord
   TOKEN_ALPHABET = [ *"a".."z", *"0".."9" ].freeze
   MAX_CONTENT_BYTES = 2.megabytes
   HTML_EXTENSION = /\A\.html?\z/i
+  # Markdown uploads are rendered to a branded HTML page at ingest, so the
+  # stored paste is still HTML -- only the accepted filename widens.
+  MARKDOWN_EXTENSION = /\A\.(md|markdown)\z/i
   TITLE_TAG = %r{<title[^>]*>(.*?)</title>}im
   MAX_TITLE_LENGTH = 120
 
@@ -15,7 +18,7 @@ class Paste < ApplicationRecord
 
   validates :content, presence: true
   validates :original_filename, presence: true
-  validate :original_filename_must_be_html
+  validate :original_filename_must_be_supported
   validate :content_must_fit_size_limit
 
   before_create :assign_token, :assign_update_token
@@ -27,11 +30,24 @@ class Paste < ApplicationRecord
 
   class << self
     def from_upload(upload)
-      new(content: read_upload(upload), original_filename: upload.original_filename)
+      filename = upload.original_filename
+      new(content: render_content(read_upload(upload), filename), original_filename: filename)
     end
 
     def read_upload(upload)
       upload.read(MAX_CONTENT_BYTES + 1).to_s.force_encoding(Encoding::UTF_8).scrub
+    end
+
+    # Markdown ingests are rendered to a branded HTML page; every other upload
+    # is stored as-is. Keyed on the filename so both create and republish agree.
+    def render_content(content, original_filename)
+      return content unless markdown_filename?(original_filename)
+
+      MarkdownDocument.new(content, filename: original_filename).to_html
+    end
+
+    def markdown_filename?(filename)
+      File.extname(filename.to_s).match?(MARKDOWN_EXTENSION)
     end
 
     def digest_update_token(token)
@@ -53,8 +69,8 @@ class Paste < ApplicationRecord
   end
 
   def republish(content:, original_filename: nil)
-    self.content = content
     self.original_filename = original_filename if original_filename.present?
+    self.content = self.class.render_content(content, self.original_filename)
     save
   end
 
@@ -94,9 +110,11 @@ class Paste < ApplicationRecord
       end
     end
 
-    def original_filename_must_be_html
+    def original_filename_must_be_supported
       return if original_filename.blank?
-      return if File.extname(original_filename).match?(HTML_EXTENSION)
+
+      extension = File.extname(original_filename)
+      return if extension.match?(HTML_EXTENSION) || extension.match?(MARKDOWN_EXTENSION)
 
       errors.add(:original_filename, :not_html)
     end
