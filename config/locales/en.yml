@@ -2,44 +2,146 @@
 # key set (a test guards against drift). Keys ending in `_html` are rendered
 # without escaping, so their `%{...}` placeholders receive pre-built markup.
 en:
-  language_name: "English"
   language_short: "EN"
 
   layout:
-    homepage: "Homepage"
-    no_signup: "No sign-up. Ever!"
-    footer_tagline: "Share HTML pages in seconds. Free, anonymous, permanent."
+    skip_to_content: "Skip to content"
+    dashboard: "Dashboard"
+    api_keys: "API keys"
+    sign_in: "Sign in"
+    sign_up: "Sign up"
+    sign_out: "Sign out"
+    footer_tagline: "Share HTML pages in seconds. Free, private, permanent."
     footer_issue: "pastehtml.dev — issue #1"
     switch_language: "Switch language"
+    primary_nav: "Primary navigation"
+
+  authentication:
+    required: "Sign in to continue."
+
+  sessions:
+    signed_in: "You're signed in."
+    signed_out: "You're signed out."
+    invalid: "Try that email and password again."
+    rate_limited: "Too many sign-in attempts. Try again in a few minutes."
+    new:
+      title: "Sign in"
+      eyebrow: "Welcome back"
+      heading: "Sign in"
+      submit: "Sign in"
+      sign_up_html: "New here? %{link}."
+
+  users:
+    created: "Your account is ready."
+    rate_limited: "Too many sign-up attempts. Please try again later."
+    new:
+      title: "Sign up"
+      eyebrow: "Make it yours"
+      heading: "Create an account"
+      submit: "Sign up"
+      sign_in_html: "Already have an account? %{link}."
+    form:
+      email: "Email address"
+      password: "Password"
+      password_confirmation: "Confirm password"
+      errors: "Check these details:"
+
+  folders:
+    eyebrow: "Folders"
+    new_link: "New folder"
+    edit_short: "Edit"
+    created: "Folder created."
+    updated: "Folder updated."
+    destroyed: "Folder removed. Pastes moved back to All pastes."
+    destroy: "Delete folder"
+    destroy_confirm: "Delete this folder? Its pastes will not be deleted."
+    new:
+      title: "New folder"
+      heading: "New folder"
+    edit:
+      title: "Edit folder"
+      heading: "Edit folder"
+    form:
+      name: "Folder name"
+      save: "Save folder"
+      cancel: "Cancel"
+      errors: "Check this folder:"
+
+  api_keys:
+    title: "API keys"
+    eyebrow: "Agent access"
+    heading: "API keys"
+    body: "Create account API keys for agents and scripts. A key can be scoped to a default folder, so anything published with it lands in the right place automatically."
+    back: "Back to dashboard"
+    default_name: "Agent key"
+    revoked: "API key revoked."
+    created_title: "Copy this API key now"
+    created_body: "The full key is shown once. Anyone with it can publish and update pastes owned by your account until you revoke it."
+    new_title: "Create a key"
+    new_body: "Use a separate key for each agent or workflow so you can revoke access without changing everything else."
+    existing_title: "Active keys"
+    destroy: "Revoke"
+    destroy_confirm: "Revoke this API key? Agents using it will stop working."
+    errors: "Check this API key:"
+    empty_body: "No API keys yet. Create one when you want an agent to publish into your account."
+    form:
+      name: "Key name"
+      default_folder: "Default folder"
+      no_default_folder: "No default folder"
+      default_folder_hint: "A folder-scoped key always publishes into that folder. Unscoped keys may use folder_id or folder_name per request."
+      create: "Create API key"
+    meta:
+      created: "created %{date}"
+      default_folder: "default folder: %{folder}"
+      last_used: "last used %{date}"
+      never_used: "never used"
+
+  dashboard:
+    meta_title: "Your pastes"
+    eyebrow: "Your library"
+    heading: "Your pastes"
+    body: "Manage your uploaded HTML pages, re-upload new versions, move them into folders, protect them with passwords, and watch view counts grow."
+    publish: "Publish HTML"
+    api_keys: "API keys"
+    folders: "Folders"
+    all_pastes: "All pastes"
+    open: "Open"
+    edit: "Edit"
+    empty_title: "No pastes yet"
+    empty_body: "Upload your first HTML file and it will appear here."
 
   home:
     meta_title: "Share HTML in seconds"
-    meta_description: "Drop an HTML file, get a private link to share. No sign-up, no editing, no fuss."
-    eyebrow: "Free · Anonymous · Instant"
+    meta_description: "Drop an HTML file, get a private link to share. Add accounts, custom subdomains, folders, passwords, and re-upload updates."
+    eyebrow: "Free · Private · Instant"
     hero_html: "Share HTML in&nbsp;seconds!"
-    subtitle: "Drag in an HTML file and get a private link your friends can open, preview, and view the source of. No account needed."
+    subtitle: "Drag in an HTML file and get a private link your friends can open, preview, and view the source of. Sign in to organize pages, re-upload updates, and choose custom subdomains."
     free_badge: "Free!"
     dropzone:
       heading: "Drop your HTML file here!"
+      selected: "File ready — set your options below, then Publish."
       browse: "browse your files"
       browse_html: "or %{browse} · or just paste HTML (%{paste})"
       constraints_html: "%{html}, %{htm} or %{md} · up to %{size}"
       publishing: "Publishing your page…"
       publishing_hint: "This only takes a moment."
       choose_file: "Choose an HTML file"
+    options:
+      title: "Publish options"
+      body: "Choose a custom subdomain, add an optional password, and file the paste into a folder when you're signed in."
     features:
       instant:
         title: "Instant link!"
         body: "Drop a file and get a URL you can share anywhere, immediately."
       unguessable:
-        title: "Unguessable URLs!"
-        body: "Every page lives behind a random 32-character ID known only to you."
+        title: "Custom subdomains!"
+        body: "Keep the random URL or claim a readable subdomain for each page."
       tamper_proof:
-        title: "Tamper-proof!"
-        body: "Pages can never be deleted, and only the API's secret update token can change one."
+        title: "Update safely!"
+        body: "Signed-in owners can re-upload new HTML versions without changing the share link."
     agents:
       title: "Built for AI agents"
-      body: "Agents can publish without a browser: one request returns the share link as JSON, plus a secret token for updating the page later."
+      body: "Agents can publish without a browser: anonymous requests return a share link and update token; account API keys can save pastes into your dashboard folders."
       docs_html: "Full agent instructions live at %{link} — just tell your agent to publish here."
     blog:
       title: "Straight from the blog"
@@ -53,6 +155,43 @@ en:
         title: "Mark It Down"
         body: "From a Markdown draft to a clean, published page."
 
+  pastes:
+    created: "Page published and saved to your dashboard."
+    created_anonymous: "Page published. Sign up to organize it in folders and re-upload updates later."
+    updated: "Paste updated. Your share link stayed the same."
+    not_owner: "Only the paste owner can edit it."
+    edit:
+      title: "Edit %{title}"
+      eyebrow: "Re-upload"
+      heading: "Update this paste"
+    form:
+      custom_subdomain: "Custom subdomain"
+      custom_subdomain_placeholder: "my-page"
+      password: "Password"
+      password_placeholder: "Optional access password"
+      new_password: "New password"
+      password_blank: "Leave blank to keep the current password"
+      remove_password: "Remove password protection"
+      folder: "Folder"
+      no_folder: "No folder"
+      publish: "Publish page"
+      reupload: "Re-upload HTML file"
+      reupload_hint: "Choose a new .html or .htm file to replace the current paste. Leave blank to only change options."
+      save: "Save changes"
+      cancel: "Cancel"
+      errors: "Check this paste:"
+
+  paste_passwords:
+    title: "Password required"
+    eyebrow: "Locked paste"
+    heading: "Enter the password"
+    body: "%{title} is password-protected."
+    password: "Paste password"
+    submit: "Unlock paste"
+    required: "Enter the paste password first."
+    invalid: "That password didn't unlock the paste."
+    rate_limited: "Too many password attempts. Try again in a few minutes."
+
   show:
     meta_description: "An HTML page shared through pastehtml.dev — preview it live or read the source."
     published_badge: "Page published"
@@ -60,12 +199,16 @@ en:
     meta:
       published: "published %{date}"
       updated: "updated %{date}"
+      views: "%{count} views"
+      folder: "in %{folder}"
+      password_protected: "password protected"
     share:
       label: "Share link"
       copy: "Copy link"
       copied: "Copied!"
       open_new_tab: "Open in a new tab"
       publish_another: "Publish another page"
+      edit: "Edit / re-upload"
     tabs:
       aria: "Paste views"
       preview: "Preview"
@@ -86,6 +229,7 @@ en:
 
   flash:
     choose_file: "Choose an HTML file to upload."
+    rate_limited: "Whoa, slow down! Try again in a moment."
     rate_limited_minute: "Whoa, slow down! You can publish again in a minute."
     rate_limited_day: "You've hit today's publishing limit. Come back tomorrow!"
 
@@ -122,9 +266,20 @@ en:
 
   activerecord:
     attributes:
+      user:
+        email_address: "Email address"
+        password: "Password"
+      folder:
+        name: "Folder name"
+      api_key:
+        name: "Key name"
+        folder: "Default folder"
       paste:
         original_filename: "Filename"
         content: "File"
+        custom_subdomain: "Custom subdomain"
+        password: "Password"
+        folder: "Folder"
     errors:
       models:
         paste:
@@ -134,3 +289,10 @@ en:
             content:
               blank: "can't be blank"
               too_large: "is too large (maximum is 2 MB)"
+            custom_subdomain:
+              invalid_subdomain: "can use only lowercase letters, numbers, and hyphens, and cannot start or end with a hyphen"
+              reserved: "is reserved"
+              taken: "has already been taken"
+            folder:
+              requires_user: "requires a signed-in owner"
+              invalid: "must belong to you"

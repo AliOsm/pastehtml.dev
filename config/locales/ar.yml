@@ -3,42 +3,146 @@
 # so their `%{...}` placeholders receive pre-built markup. Digits stay Western;
 # storage units (KB/MB) stay Latin to match the size copy.
 ar:
-  language_name: العربية
   language_short: عربي
+
   layout:
-    homepage: الصفحة الرئيسية
-    no_signup: بلا تسجيل. أبدًا!
-    footer_tagline: شارك صفحات HTML في ثوانٍ. مجانًا، بلا هوية، وإلى الأبد.
+    skip_to_content: تخطَّ إلى المحتوى
+    dashboard: مكتبتي
+    api_keys: مفاتيح API
+    sign_in: تسجيل الدخول
+    sign_up: إنشاء حساب
+    sign_out: تسجيل الخروج
+    footer_tagline: شارك صفحات HTML في ثوانٍ. مجانًا، خاصة، ودائمة.
     footer_issue: pastehtml.dev — العدد رقم 1
     switch_language: تغيير اللغة
+    primary_nav: التنقل الرئيسي
+
+  authentication:
+    required: سجّل الدخول للمتابعة.
+
+  sessions:
+    signed_in: تم تسجيل دخولك.
+    signed_out: تم تسجيل خروجك.
+    invalid: تحقّق من البريد الإلكتروني وكلمة المرور وحاول مرة أخرى.
+    rate_limited: محاولات تسجيل الدخول كثيرة جدًا. حاول مرة أخرى بعد بضع دقائق.
+    new:
+      title: تسجيل الدخول
+      eyebrow: أهلًا بعودتك
+      heading: تسجيل الدخول
+      submit: تسجيل الدخول
+      sign_up_html: مستخدم جديد؟ %{link}.
+
+  users:
+    created: أصبح حسابك جاهزًا.
+    rate_limited: محاولات إنشاء الحساب كثيرة جدًا. يرجى المحاولة لاحقًا.
+    new:
+      title: إنشاء حساب
+      eyebrow: اجعلها ملكك
+      heading: أنشئ حسابًا
+      submit: إنشاء حساب
+      sign_in_html: لديك حساب بالفعل؟ %{link}.
+    form:
+      email: البريد الإلكتروني
+      password: كلمة المرور
+      password_confirmation: تأكيد كلمة المرور
+      errors: "راجع هذه البيانات:"
+
+  folders:
+    eyebrow: المجلدات
+    new_link: مجلد جديد
+    edit_short: تعديل
+    created: تم إنشاء المجلد.
+    updated: تم تحديث المجلد.
+    destroyed: تم حذف المجلد، ونُقلت صفحاته إلى "كل الصفحات".
+    destroy: حذف المجلد
+    destroy_confirm: هل تريد حذف هذا المجلد؟ لن تُحذف الصفحات الموجودة فيه.
+    new:
+      title: مجلد جديد
+      heading: مجلد جديد
+    edit:
+      title: تعديل المجلد
+      heading: تعديل المجلد
+    form:
+      name: اسم المجلد
+      save: حفظ المجلد
+      cancel: إلغاء
+      errors: "راجع هذا المجلد:"
+
+  api_keys:
+    title: مفاتيح API
+    eyebrow: وصول الوكلاء
+    heading: مفاتيح API
+    body: أنشئ مفاتيح API لحسابك يستخدمها الوكلاء والسكربتات. يمكن ربط المفتاح بمجلد افتراضي حتى يصل كل ما ينشره إلى المكان الصحيح تلقائيًا.
+    back: العودة إلى لوحة التحكم
+    default_name: مفتاح وكيل
+    revoked: تم إبطال مفتاح API.
+    created_title: انسخ مفتاح API هذا الآن
+    created_body: يظهر المفتاح الكامل مرة واحدة. يستطيع كل من يملكه نشر وتحديث الصفحات المملوكة لحسابك إلى أن تلغيه.
+    new_title: إنشاء مفتاح
+    new_body: استخدم مفتاحًا منفصلًا لكل وكيل أو سير عمل حتى تتمكن من إلغاء الوصول من دون تغيير كل شيء آخر.
+    existing_title: المفاتيح النشطة
+    destroy: إبطال
+    destroy_confirm: هل تريد إبطال مفتاح API هذا؟ سيتوقف الوكلاء الذين يستخدمونه عن العمل.
+    errors: "راجع مفتاح API هذا:"
+    empty_body: لا توجد مفاتيح API بعد. أنشئ مفتاحًا عندما تريد أن ينشر وكيل داخل حسابك.
+    form:
+      name: اسم المفتاح
+      default_folder: المجلد الافتراضي
+      no_default_folder: بلا مجلد افتراضي
+      default_folder_hint: المفتاح المرتبط بمجلد ينشر دائمًا في ذلك المجلد. يمكن للمفاتيح غير المرتبطة استخدام folder_id أو folder_name في كل طلب.
+      create: إنشاء مفتاح API
+    meta:
+      created: أُنشئ %{date}
+      default_folder: "المجلد الافتراضي: %{folder}"
+      last_used: آخر استخدام %{date}
+      never_used: لم يُستخدم بعد
+
+  dashboard:
+    meta_title: صفحاتك
+    eyebrow: مكتبتك
+    heading: صفحاتك
+    body: أدر صفحات HTML التي رفعتها، وأعد رفع نسخ جديدة، وانقلها إلى مجلدات، واحمها بكلمات مرور، وتابع عدد المشاهدات.
+    publish: انشر HTML
+    api_keys: مفاتيح API
+    folders: المجلدات
+    all_pastes: كل الصفحات
+    open: فتح
+    edit: تعديل
+    empty_title: لا توجد صفحات بعد
+    empty_body: ارفع أول ملف HTML وسيظهر هنا.
+
   home:
     meta_title: شارك HTML في ثوانٍ
-    meta_description: أفلِت ملف HTML واحصل على رابط خاص للمشاركة. بلا تسجيل، بلا تعديل، بلا تعقيد.
-    eyebrow: مجانًا · بلا هوية · فوري
+    meta_description: أفلِت ملف HTML واحصل على رابط خاص للمشاركة. أضف الحسابات، والنطاقات الفرعية المخصصة، والمجلدات، وكلمات المرور، وتحديثات إعادة الرفع.
+    eyebrow: مجانًا · خاص · فوري
     hero_html: شارك HTML في&nbsp;ثوانٍ!
-    subtitle: اسحب ملف HTML إلى هنا واحصل على رابط خاص يفتحه أصدقاؤك ليعاينوا الصفحة ويطّلعوا على مصدرها. لا حاجة إلى حساب.
+    subtitle: اسحب ملف HTML إلى هنا واحصل على رابط خاص يفتحه أصدقاؤك ليعاينوا الصفحة ويطّلعوا على مصدرها. سجّل الدخول لتنظيم الصفحات وإعادة رفع التحديثات واختيار نطاقات فرعية مخصصة.
     free_badge: مجانًا!
     dropzone:
       heading: أفلِت ملف HTML هنا!
+      selected: الملف جاهز — اضبط خياراتك بالأسفل ثم انشُر.
       browse: تصفّح ملفاتك
       browse_html: أو %{browse} · أو الصق HTML مباشرةً (%{paste})
       constraints_html: "%{html} أو %{htm} أو %{md} · حتى %{size}"
       publishing: جارٍ نشر صفحتك…
       publishing_hint: لن يستغرق الأمر سوى لحظة.
       choose_file: اختر ملف HTML
+    options:
+      title: خيارات النشر
+      body: اختر نطاقًا فرعيًا مخصصًا، وأضف كلمة مرور اختيارية، وضع الصفحة في مجلد عند تسجيل الدخول.
     features:
       instant:
         title: رابط فوري!
         body: أفلِت ملفًا واحصل على URL تشاركه أينما شئت، في الحال.
       unguessable:
-        title: روابط لا تُخمَّن!
-        body: كل صفحة محمية خلف معرّف عشوائي من 32 حرفًا لا يعرفه سواك.
+        title: نطاقات فرعية مخصصة!
+        body: احتفظ بالرابط العشوائي أو احجز نطاقًا فرعيًا واضحًا لكل صفحة.
       tamper_proof:
-        title: محصّنة من العبث!
-        body: لا يمكن حذف الصفحات أبدًا، ولا يغيّرها إلا رمز التحديث السري الخاص بـ API.
+        title: تحديث آمن!
+        body: يستطيع المالكون المسجلون إعادة رفع نسخ HTML جديدة من دون تغيير رابط المشاركة.
     agents:
       title: مصمَّم لوكلاء الذكاء الاصطناعي
-      body: 'يمكن للوكلاء النشر بلا متصفّح: طلب واحد يُعيد رابط المشاركة بصيغة JSON، مع رمز سري لتحديث الصفحة لاحقًا.'
+      body: 'يمكن للوكلاء النشر بلا متصفّح: تعيد الطلبات المجهولة رابطًا ورمز تحديث، وتستطيع مفاتيح API للحساب حفظ الصفحات في مجلدات لوحة التحكم.'
       docs_html: تعليمات الوكلاء الكاملة موجودة في %{link} — فقط اطلب من وكيلك أن ينشر هنا.
     blog:
       title: مباشرةً من المدوّنة
@@ -51,6 +155,44 @@ ar:
       markdown:
         title: اكتبها بماركداون
         body: من مسودّة بصيغة ماركداون إلى صفحةٍ منشورةٍ أنيقة.
+
+  pastes:
+    created: نُشرت الصفحة وحُفظت في لوحة التحكم.
+    created_anonymous: نُشرت الصفحة. أنشئ حسابًا لتنظيمها في مجلدات وإعادة رفع تحديثات لاحقًا.
+    updated: تم تحديث الصفحة. بقي رابط المشاركة كما هو.
+    not_owner: لا يستطيع تعديل هذه الصفحة إلا مالكها.
+    edit:
+      title: تعديل %{title}
+      eyebrow: إعادة رفع
+      heading: حدّث هذه الصفحة
+    form:
+      custom_subdomain: النطاق الفرعي المخصص
+      custom_subdomain_placeholder: my-page
+      password: كلمة المرور
+      password_placeholder: كلمة مرور اختيارية للدخول
+      new_password: كلمة مرور جديدة
+      password_blank: اتركه فارغًا للإبقاء على كلمة المرور الحالية
+      remove_password: إزالة الحماية بكلمة المرور
+      folder: المجلد
+      no_folder: بلا مجلد
+      publish: نشر الصفحة
+      reupload: إعادة رفع ملف HTML
+      reupload_hint: اختر ملف .html أو .htm جديدًا لاستبدال الصفحة الحالية. اتركه فارغًا لتغيير الخيارات فقط.
+      save: حفظ التغييرات
+      cancel: إلغاء
+      errors: "راجع هذه الصفحة:"
+
+  paste_passwords:
+    title: كلمة المرور مطلوبة
+    eyebrow: صفحة مقفلة
+    heading: أدخل كلمة المرور
+    body: "%{title} محمية بكلمة مرور."
+    password: كلمة مرور الصفحة
+    submit: فتح الصفحة
+    required: أدخل كلمة مرور الصفحة أولًا.
+    invalid: لم تفتح كلمة المرور هذه الصفحة.
+    rate_limited: محاولات كلمة المرور كثيرة جدًا. حاول مرة أخرى بعد بضع دقائق.
+
   show:
     meta_description: صفحة HTML تمت مشاركتها عبر pastehtml.dev — عاينها مباشرةً أو اطّلع على مصدرها.
     published_badge: نُشرت الصفحة
@@ -58,12 +200,16 @@ ar:
     meta:
       published: نُشرت %{date}
       updated: حُدّثت %{date}
+      views: "%{count} مشاهدة"
+      folder: في %{folder}
+      password_protected: محمية بكلمة مرور
     share:
       label: رابط المشاركة
       copy: انسخ الرابط
       copied: تم النسخ!
       open_new_tab: افتح في علامة تبويب جديدة
       publish_another: انشر صفحة أخرى
+      edit: تعديل / إعادة رفع
     tabs:
       aria: طرق عرض الصفحة
       preview: معاينة
@@ -75,32 +221,37 @@ ar:
     preview:
       iframe_title: معاينة %{filename}
       isolation_html: 'تعمل كل صفحة في بيئة معزولة خاصة بها: تعمل بداخلها النصوص البرمجية والتخزين المحلي بشكل كامل، لكنها لا تستطيع الوصول إلى هذا الموقع أو إلى الصفحات الأخرى مطلقًا. اضغط %{fullscreen_key} لملء الشاشة، أو %{exit_key} للخروج.'
+
   dropzone_errors:
     not_html_file: لا يبدو هذا ملف HTML أو Markdown. اختر ملف .html أو .htm أو .md.
     empty: هذا الملف فارغ.
     too_large: حجم هذا الملف أكبر من 2 MB.
     not_html_clipboard: لا يبدو محتوى الحافظة بصيغة HTML. يجب أن يبدأ بوسم.
+
   flash:
     choose_file: اختر ملف HTML لرفعه.
+    rate_limited: مهلًا، على رِسلك! حاول مرة أخرى بعد لحظات.
     rate_limited_minute: مهلًا، على رِسلك! يمكنك النشر مجددًا بعد دقيقة.
     rate_limited_day: لقد بلغت حدّ النشر لهذا اليوم. عُد غدًا!
+
   date:
     formats:
       long: "%-d %B %Y"
     month_names:
-    -
-    - يناير
-    - فبراير
-    - مارس
-    - أبريل
-    - مايو
-    - يونيو
-    - يوليو
-    - أغسطس
-    - سبتمبر
-    - أكتوبر
-    - نوفمبر
-    - ديسمبر
+      - ~
+      - يناير
+      - فبراير
+      - مارس
+      - أبريل
+      - مايو
+      - يونيو
+      - يوليو
+      - أغسطس
+      - سبتمبر
+      - أكتوبر
+      - نوفمبر
+      - ديسمبر
+
   number:
     human:
       storage_units:
@@ -113,11 +264,23 @@ ar:
           mb: MB
           gb: GB
           tb: TB
+
   activerecord:
     attributes:
+      user:
+        email_address: البريد الإلكتروني
+        password: كلمة المرور
+      folder:
+        name: اسم المجلد
+      api_key:
+        name: اسم المفتاح
+        folder: المجلد الافتراضي
       paste:
         original_filename: اسم الملف
         content: الملف
+        custom_subdomain: النطاق الفرعي المخصص
+        password: كلمة المرور
+        folder: المجلد
     errors:
       models:
         paste:
@@ -127,3 +290,10 @@ ar:
             content:
               blank: لا يمكن أن يكون فارغًا
               too_large: كبير جدًا (الحد الأقصى 2 MB)
+            custom_subdomain:
+              invalid_subdomain: يمكنه استخدام الأحرف اللاتينية الصغيرة والأرقام والشرطات فقط، ولا يمكن أن يبدأ أو ينتهي بشرطة
+              reserved: محجوز
+              taken: مستخدم بالفعل
+            folder:
+              requires_user: يتطلب مالكًا مسجل الدخول
+              invalid: يجب أن يكون مملوكًا لك

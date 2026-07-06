@@ -5,6 +5,11 @@
 module LocaleSwitching
   extend ActiveSupport::Concern
 
+  # Host-only in production so untrusted paste subdomains can't shadow the app's
+  # locale with a Domain=.pastehtml.dev cookie (the __Host- prefix makes browsers
+  # reject Domain-scoped variants), mirroring the auth cookie's hardening.
+  LOCALE_COOKIE_NAME = Rails.env.production? ? "__Host-locale" : "locale"
+
   included do
     around_action :switch_locale
   end
@@ -19,7 +24,9 @@ module LocaleSwitching
     end
 
     def locale_from_cookie
-      available(cookies[:locale])
+      # Fall back to the legacy unprefixed cookie so a saved preference survives
+      # the one-time rename to __Host-locale in production (same name in dev).
+      available(cookies[LOCALE_COOKIE_NAME]) || available(cookies[:locale])
     end
 
     # Reads the ordered language tags from Accept-Language and returns the first
@@ -33,9 +40,5 @@ module LocaleSwitching
     def available(tag)
       locale = tag.to_s.downcase.to_sym
       locale if I18n.available_locales.include?(locale)
-    end
-
-    def text_direction
-      I18n.locale == :ar ? "rtl" : "ltr"
     end
 end
