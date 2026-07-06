@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<!--
+  pastehtml.dev — design / spec document template
+  ===============================================
+  A self-contained, single-file design-spec document with reader tooling baked in:
+  block-anchored notes + a notes panel, per-section "mark as read" (top & bottom),
+  open-question answer boxes, tag filtering, per-section + total reading times, a
+  sidebar table of contents, light/dark themes, Mermaid diagrams, full mobile
+  support, and a "Download my copy" button that bakes every reader's annotations
+  into the file. All reader state persists in localStorage and travels inside the
+  downloaded copy — hand someone your annotated copy and their own notes are never
+  overwritten.
+
+  (Tag names are written plainly below — no angle brackets — so a server-side
+  title extractor never mistakes this comment for the page title.)
+
+  WHAT TO EDIT (search for  >>>  markers):
+    1. data-doc-key on the html element — a UNIQUE slug; it namespaces this
+       document's saved state so two documents (or two downloaded copies opened
+       from file://) never collide in localStorage.
+    2. The page title and the meta description in the head.
+    3. The doc-header block — the document title heading and the meta line.
+    4. The section.sec blocks — that's your document. Each section needs an id, a
+       data-title (shown in the TOC) and optional data-tags="a b c". The tag filter
+       builds itself from whatever data-tags you use; add matching --tag-NAME colors
+       in the CSS TAG PALETTE block for any new tag names.
+
+  KEEP AS-IS (this is the reusable engine):
+    - the style block and the trailing module script.
+    Edit content, not the engine, and every document behaves identically.
+
+  PUBLISH (full contract at https://pastehtml.dev/llms.txt):
+    curl -F "file=@design-spec.html" https://pastehtml.dev/api/pastes
+    Save the returned update_token to revise it later (PATCH).
+  Tell readers to open the live_url (the document on its own origin) so scripts and
+  localStorage work.
+-->
+<!-- >>> data-doc-key: change this slug for a new document (namespaces its saved state) <<< -->
+<html lang="en" dir="ltr" data-doc-key="pastehtml-design-spec-example">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog Platform — Design Spec</title>
+<meta name="description" content="Example design/spec document — a generic blogging platform — showcasing the pastehtml.dev spec template: anchored notes, dark mode, reading times, tags and more.">
+<link rel="icon" href="https://pastehtml.dev/icon.png" type="image/png">
+<link rel="icon" href="https://pastehtml.dev/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="https://pastehtml.dev/icon.png">
+<style>
+  /* ============================ THEME PALETTE ============================ */
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --panel-2: #fbfcfd;
+    --ink: #0f172a; --muted: #64748b; --faint: #94a3b8;
+    --accent: #4f46e5; --accent-ink: #4f46e5; --accent-soft: #eef2ff;
+    --border: #e5e8ee; --border-strong: #d3d9e3;
+    --warn: #b45309; --warn-soft: #fef3c7;
+    --done: #15803d; --done-soft: #dcfce7;
+    --code-bg: #f1f5f9; --code-ink: #0f172a;
+    --shadow: 0 4px 20px rgba(15,23,42,.10);
+    --shadow-sm: 0 2px 8px rgba(15,23,42,.08);
+    --pin: #4f46e5; --highlight: rgba(79,70,229,.10);
+    --mermaid-theme: neutral;
+  }
+  html[data-theme="dark"] {
+    --bg: #0b1120; --panel: #131b2e; --panel-2: #182136;
+    --ink: #e6ebf5; --muted: #93a1b8; --faint: #64748b;
+    --accent: #a5b4fc; --accent-ink: #c7d2fe; --accent-soft: #1e2a45;
+    --border: #24314c; --border-strong: #33425f;
+    --warn: #fbbf24; --warn-soft: #3a2f12;
+    --done: #4ade80; --done-soft: #12321f;
+    --code-bg: #0e1626; --code-ink: #dbe4f3;
+    --shadow: 0 6px 26px rgba(0,0,0,.45);
+    --shadow-sm: 0 2px 10px rgba(0,0,0,.4);
+    --pin: #a5b4fc; --highlight: rgba(165,180,252,.14);
+  }
+  /* ===== TAG PALETTE — add a --tag-<name> pair for each data-tags value ===== */
+  :root {
+    --tag-product-bg: #e0f2fe; --tag-product-fg: #0369a1;
+    --tag-backend-bg: #ede9fe; --tag-backend-fg: #6d28d9;
+    --tag-frontend-bg: #fce7f3; --tag-frontend-fg: #be185d;
+    --tag-security-bg: #fee2e2; --tag-security-fg: #b91c1c;
+    --tag-infra-bg: #d1fae5; --tag-infra-fg: #047857;
+  }
+  html[data-theme="dark"] {
+    --tag-product-bg: #0c2a3f; --tag-product-fg: #7dd3fc;
+    --tag-backend-bg: #2a1e4d; --tag-backend-fg: #c4b5fd;
+    --tag-frontend-bg: #3d1330; --tag-frontend-fg: #f9a8d4;
+    --tag-security-bg: #3d1414; --tag-security-fg: #fca5a5;
+    --tag-infra-bg: #0e3325; --tag-infra-fg: #6ee7b7;
+  }
+
+  /* ============================ BASE ============================ */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Noto Sans Arabic", sans-serif;
+    line-height: 1.62; -webkit-font-smoothing: antialiased;
+    transition: background .25s, color .25s;
+  }
+  a { color: var(--accent-ink); }
+  h1, h2, h3, h4 { line-height: 1.28; }
+
+  #progress-bar { position: fixed; inset-block-start: 0; inset-inline-start: 0; height: 3px; width: 0; background: var(--accent); z-index: 60; transition: width .12s linear; }
+
+  /* ============================ TOP BAR ============================ */
+  #topbar {
+    position: sticky; inset-block-start: 0; z-index: 50; display: flex; align-items: center; gap: 12px;
+    padding: 9px 16px; background: color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(8px); border-block-end: 1px solid var(--border);
+  }
+  #topbar .brand { font-weight: 700; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+  #topbar .brand small { color: var(--muted); font-weight: 500; }
+  #menu-btn { display: none; }
+  .tb { border: 1px solid var(--border-strong); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 6px 13px; font-size: 12.5px; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+  .tb:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .tb.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  html[data-theme="dark"] .tb.on { color: #0b1120; }
+  #notes-count { background: var(--accent-soft); color: var(--accent-ink); border-radius: 999px; font-size: 11px; font-weight: 700; padding: 0 6px; min-width: 17px; text-align: center; }
+  .tb.on #notes-count { background: rgba(255,255,255,.25); color: #fff; }
+
+  /* ============================ LAYOUT ============================ */
+  .layout { display: flex; max-width: 1500px; margin: 0 auto; align-items: flex-start; }
+
+  /* ---- Sidebar TOC ---- */
+  nav#toc { position: sticky; inset-block-start: 49px; align-self: flex-start; inline-size: 300px; flex-shrink: 0; block-size: calc(100vh - 49px); overflow-y: auto; padding: 20px 14px 40px; border-inline-end: 1px solid var(--border); }
+  nav#toc h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+  #read-progress { font-size: 12px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+  #read-progress b { color: var(--ink); }
+  #tag-filter { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 14px; }
+  #tag-filter button { font-size: 11px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--panel); color: var(--muted); border-radius: 999px; padding: 2px 9px; cursor: pointer; }
+  #tag-filter button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  html[data-theme="dark"] #tag-filter button.active { color: #0b1120; }
+  nav#toc ol { list-style: none; padding: 0; margin: 0; counter-reset: none; }
+  nav#toc li { margin: 1px 0; }
+  nav#toc a { display: flex; align-items: baseline; gap: 6px; padding: 5px 9px; border-radius: 7px; color: var(--ink); text-decoration: none; font-size: 13px; }
+  nav#toc a:hover { background: var(--accent-soft); }
+  nav#toc li.active > a { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+  nav#toc li.read a .toc-title { color: var(--muted); }
+  nav#toc li.read a .toc-title::after { content: " ✓"; color: var(--done); font-weight: 700; }
+  nav#toc .toc-title { flex: 1; min-width: 0; }
+  nav#toc .toc-min { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .toc-tags { display: inline-flex; gap: 3px; }
+  .toc-tag { font-size: 8.5px; font-weight: 800; letter-spacing: .03em; border-radius: 3px; padding: 0 3px; text-transform: uppercase; }
+  li.tag-hidden, section.tag-hidden { display: none; }
+
+  /* ---- Main ---- */
+  main { flex: 1; min-width: 0; padding: 26px 40px 140px; position: relative; }
+  header.doc-header { margin-bottom: 18px; }
+  header.doc-header h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -.01em; }
+  header.doc-header .meta { color: var(--muted); font-size: 13.5px; }
+  header.doc-header .meta b { color: var(--ink); }
+  .hint { margin-top: 10px; font-size: 13px; color: var(--muted); background: var(--panel); border: 1px dashed var(--border-strong); border-radius: 10px; padding: 10px 14px; }
+  .hint kbd { background: var(--code-bg); border: 1px solid var(--border-strong); border-radius: 5px; padding: 0 5px; font-size: 11.5px; font-family: ui-monospace, monospace; }
+
+  /* ---- Sections ---- */
+  section.sec { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 8px 30px 26px; margin: 18px 0; scroll-margin-top: 64px; box-shadow: var(--shadow-sm); }
+  section.sec.read { opacity: .6; }
+  section.sec.read:hover, section.sec.read:focus-within { opacity: 1; }
+  .mark-read-row { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; }
+  .mark-read-row.bottom { justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .mark-read-row .rule { flex: 1; height: 1px; background: var(--border); }
+  button.mark-read { border: 1px solid var(--border-strong); background: var(--panel-2); color: var(--muted); border-radius: 999px; padding: 4px 13px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+  button.mark-read:hover { border-color: var(--done); color: var(--done); }
+  section.read button.mark-read { background: var(--done-soft); color: var(--done); border-color: transparent; }
+  .sec-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .sec-head h2 { font-size: 21px; margin: 8px 0 0; }
+  .sec-head .num { color: var(--accent-ink); margin-inline-end: 7px; }
+  .sec-tags { display: inline-flex; gap: 5px; margin-inline-start: auto; }
+  .sec-tag { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 1px 10px; text-transform: capitalize; }
+
+  h3 { font-size: 16px; margin: 22px 0 6px; }
+  h4 { font-size: 14px; margin: 16px 0 4px; }
+  p, ul, ol { margin: 9px 0; }
+  li { margin: 4px 0; }
+  code { background: var(--code-bg); color: var(--code-ink); border-radius: 4px; padding: 1.5px 5px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .86em; }
+  pre { background: var(--code-bg); color: var(--code-ink); border: 1px solid var(--border); border-radius: 9px; padding: 14px 16px; overflow-x: auto; font-size: 13px; line-height: 1.55; }
+  pre code { background: none; padding: 0; }
+
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13.5px; }
+  th, td { border: 1px solid var(--border); padding: 7px 11px; text-align: start; vertical-align: top; }
+  th { background: var(--panel-2); font-weight: 600; }
+  tr:nth-child(even) td { background: var(--panel-2); }
+
+  .callout { border-inline-start: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 9px 9px 0; padding: 10px 16px; margin: 14px 0; font-size: 14px; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 10px; }
+  .pill.decided { background: var(--done-soft); color: var(--done); }
+  .pill.open { background: var(--warn-soft); color: var(--warn); }
+
+  .mermaid { display: flex; justify-content: center; margin: 16px 0; background: transparent; overflow-x: auto; }
+  .mermaid[data-failed] { display: block; white-space: pre; font-family: ui-monospace, monospace; font-size: 12.5px; color: var(--muted); background: var(--code-bg); border: 1px dashed var(--border-strong); border-radius: 9px; padding: 12px 14px; }
+
+  /* ---- Open questions ---- */
+  .oq-list { list-style: none; padding: 0; margin: 12px 0; }
+  .oq-list > li { border: 1px solid var(--border); border-radius: 11px; padding: 12px 16px; margin: 10px 0; background: var(--panel-2); }
+  .oq-list > li.discussed { background: var(--done-soft); border-color: transparent; }
+  .oq-top { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+  .oq-top input[type=checkbox] { margin-top: 5px; width: 16px; height: 16px; accent-color: var(--done); flex-shrink: 0; }
+  .oq-q { font-weight: 600; }
+  .oq-rec { font-size: 13.5px; color: var(--muted); margin-top: 3px; }
+  .oq-rec b { color: var(--ink); }
+  .oq-answer { display: block; width: 100%; min-height: 44px; margin-top: 10px; padding: 8px 11px; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--panel); border: 1px solid var(--border-strong); border-radius: 8px; resize: vertical; }
+  .oq-answer:focus { outline: none; border-color: var(--accent); }
+
+  footer.doc-footer { color: var(--muted); font-size: 13px; margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+  /* ============================ NOTES: anchoring & pins ============================ */
+  body.adding main { cursor: crosshair; }
+  body.adding .anno-hover { outline: 2px dashed var(--accent); outline-offset: 3px; border-radius: 4px; background: var(--highlight); }
+  #note-layer { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+  .note-pin { position: absolute; pointer-events: auto; width: 22px; height: 22px; margin-inline-start: -2px; border: none; background: var(--pin); color: #fff; border-radius: 50% 50% 50% 2px; font-size: 11px; line-height: 22px; text-align: center; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .1s; }
+  html[data-theme="dark"] .note-pin { color: #0b1120; }
+  .note-pin:hover { transform: scale(1.18); }
+  .note-target-flash { animation: flash 1.3s ease; }
+  @keyframes flash { 0%,100% { background: transparent; } 20%,60% { background: var(--highlight); } }
+  .note-anchored { outline: 1px solid transparent; }
+
+  /* ---- Notes side panel ---- */
+  #notes-panel { position: fixed; inset-block: 49px 0; inset-inline-end: 0; inline-size: 360px; max-inline-size: 92vw; background: var(--panel); border-inline-start: 1px solid var(--border); box-shadow: var(--shadow); display: flex; flex-direction: column; z-index: 45; transform: translateX(100%); transition: transform .22s ease; }
+  html[dir="rtl"] #notes-panel { transform: translateX(-100%); }
+  #notes-panel.open { transform: none; }
+  #notes-panel .np-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-block-end: 1px solid var(--border); }
+  #notes-panel .np-head b { flex: 1; font-size: 14px; }
+  #notes-panel .np-head button { border: 1px solid var(--border-strong); background: var(--panel); color: var(--muted); border-radius: 7px; padding: 3px 9px; font-size: 12px; cursor: pointer; }
+  #notes-panel .np-head button:hover { color: var(--accent-ink); border-color: var(--accent); }
+  #notes-list { flex: 1; overflow-y: auto; padding: 10px 12px 24px; }
+  .np-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 16px; line-height: 1.6; }
+  .note-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 9px; background: var(--panel-2); cursor: pointer; }
+  .note-card:hover { border-color: var(--accent); }
+  .note-card .nc-loc { font-size: 11px; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 3px; }
+  .note-card .nc-quote { font-size: 12px; color: var(--muted); border-inline-start: 2px solid var(--border-strong); padding-inline-start: 8px; margin: 4px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .note-card .nc-body { font-size: 13.5px; white-space: pre-wrap; word-break: break-word; }
+  .note-card .nc-drift { font-size: 11px; color: var(--warn); margin-top: 5px; }
+  .note-card .nc-acts { display: flex; gap: 8px; margin-top: 7px; }
+  .note-card .nc-acts button { border: none; background: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 0; }
+  .note-card .nc-acts button:hover { color: var(--accent-ink); text-decoration: underline; }
+  .note-card .nc-acts button.del:hover { color: #dc2626; }
+
+  /* ---- Modal & popover ---- */
+  .scrim { position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .scrim[hidden], #note-popover[hidden] { display: none; }
+  #note-modal .box { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); width: min(520px, 100%); padding: 18px 20px; }
+  #note-modal h3 { margin: 0 0 4px; font-size: 16px; }
+  #note-modal .ctx { font-size: 12.5px; color: var(--muted); border-inline-start: 2px solid var(--border-strong); padding-inline-start: 9px; margin: 8px 0 12px; max-height: 70px; overflow: auto; }
+  #note-modal textarea { width: 100%; min-height: 120px; padding: 10px 12px; font: inherit; font-size: 14px; color: var(--ink); background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: 9px; resize: vertical; }
+  #note-modal textarea:focus { outline: none; border-color: var(--accent); }
+  #note-modal .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  .btn { border: 1px solid var(--border-strong); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 7px 15px; font-size: 13px; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  html[data-theme="dark"] .btn.primary { color: #0b1120; }
+  #note-popover { position: absolute; z-index: 70; inline-size: min(320px, 78vw); background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 14px; }
+  #note-popover .pp-note { font-size: 13.5px; white-space: pre-wrap; word-break: break-word; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  #note-popover .pp-note:last-of-type { border-bottom: none; }
+  #note-popover .pp-acts { display: flex; gap: 10px; margin-top: 4px; }
+  #note-popover .pp-acts button { border: none; background: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 0; }
+  #note-popover .pp-acts button:hover { color: var(--accent-ink); }
+  #note-popover .pp-add { margin-top: 10px; width: 100%; }
+
+  #scrim-toc { display: none; }
+
+  /* ============================ RESPONSIVE ============================ */
+  @media (max-width: 900px) {
+    #menu-btn { display: inline-flex; }
+    .layout { display: block; }
+    nav#toc {
+      position: fixed; inset-block: 0 0; inset-inline-start: 0; z-index: 80; inline-size: 288px; max-inline-size: 84vw;
+      block-size: 100vh; background: var(--panel); box-shadow: var(--shadow);
+      transform: translateX(-100%); transition: transform .22s ease; border-inline-end: 1px solid var(--border);
+    }
+    html[dir="rtl"] nav#toc { inset-inline-start: auto; inset-inline-end: 0; transform: translateX(100%); }
+    nav#toc.open { transform: none; }
+    #scrim-toc.show { display: block; position: fixed; inset: 0; background: rgba(15,23,42,.4); z-index: 75; }
+    main { padding: 18px 16px 120px; }
+    section.sec { padding-inline: 18px; }
+    header.doc-header h1 { font-size: 24px; }
+    .brand small { display: none; }
+    /* Notes panel becomes a bottom sheet */
+    #notes-panel { inset-block: auto 0; inset-inline: 0; inline-size: auto; max-inline-size: none; block-size: 74vh; border-inline-start: none; border-block-start: 1px solid var(--border); border-radius: 16px 16px 0 0; transform: translateY(100%); }
+    html[dir="rtl"] #notes-panel { transform: translateY(100%); }
+    #notes-panel.open { transform: none; }
+    .note-pin { width: 26px; height: 26px; line-height: 26px; font-size: 12px; }
+  }
+
+  @media print {
+    #topbar, #progress-bar, nav#toc, #notes-panel, #note-layer, .mark-read-row, #note-modal, #note-popover, .hint { display: none !important; }
+    section.sec { opacity: 1 !important; break-inside: avoid; box-shadow: none; border-color: #ccc; }
+    main { padding: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, html { transition: none !important; scroll-behavior: auto !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="progress-bar"></div>
+
+<header id="topbar">
+  <button id="menu-btn" class="tb" aria-label="Table of contents" title="Contents">☰</button>
+  <div class="brand"><span id="brand-title">Blog Platform — Design Spec</span> <small id="brand-time"></small></div>
+  <button id="add-note-btn" class="tb" title="Add a note: click, then pick a paragraph">✎ <span class="lbl">Add note</span></button>
+  <button id="notes-btn" class="tb" title="Show all notes">🗒 <span class="lbl">Notes</span> <span id="notes-count">0</span></button>
+  <button id="theme-btn" class="tb" title="Toggle light / dark" aria-label="Toggle theme">🌙</button>
+  <button id="download-btn" class="tb" title="Download a copy with your notes, answers and progress baked in">⤓ <span class="lbl">Download</span></button>
+</header>
+
+<div class="layout">
+  <nav id="toc" aria-label="Table of contents">
+    <h2>Contents</h2>
+    <div id="read-progress"></div>
+    <div id="tag-filter"></div>
+    <ol id="toc-list"></ol>
+  </nav>
+
+  <main>
+    <header class="doc-header">
+      <!-- >>> EDIT: document title + meta line <<< -->
+      <h1>Blog Platform — Design Spec</h1>
+      <div class="meta">Example Project · 2026-07-01 · status: <b>draft for review</b> · <span id="total-time"></span></div>
+      <div class="hint">
+        This is an <b>example</b> generated from the pastehtml.dev spec template. Try it: click
+        <b>✎ Add note</b> then click any paragraph to leave a comment; toggle <kbd>🌙</kbd> for dark mode;
+        press <b>Mark as read</b> on a section; answer an open question at the bottom; then hit
+        <b>⤓ Download</b> — your notes, answers and progress travel inside the saved file.
+        Everything saves in this browser only.
+      </div>
+    </header>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="overview" data-title="Overview &amp; Goals" data-tags="product">
+      <div class="sec-head"><h2><span class="num">1.</span>Overview &amp; Goals</h2></div>
+      <p>This document specifies <b>Quill</b>, a small multi-author blogging platform: authors draft posts in a rich editor, editors review and schedule them, and readers browse a fast public site with comments and RSS. It is deliberately generic — the point is to exercise every part of the spec template, not to describe a real product.</p>
+      <h3>Goals</h3>
+      <ul>
+        <li><b>Author-friendly writing:</b> autosaving drafts, a clean editor, and a preview that matches the live rendering exactly.</li>
+        <li><b>Editorial control:</b> a lightweight review workflow (draft → in review → scheduled → published) with an audit trail of who changed what.</li>
+        <li><b>Fast public reads:</b> statically-cacheable pages, no per-request database work on the hot path, and clean, shareable URLs.</li>
+        <li><b>Healthy comments:</b> threaded discussion with spam defense and human moderation, never blocking a page render.</li>
+      </ul>
+      <h3>Non-goals (first release)</h3>
+      <ul>
+        <li>Paid subscriptions, paywalls, or memberships.</li>
+        <li>A plugin/extension marketplace.</li>
+        <li>Multi-language content translation (the UI itself is direction-agnostic, but posts are single-language).</li>
+      </ul>
+      <div class="callout"><b>Scope decision:</b> the first release ships the author, editor, reader, and comment experiences end to end. Analytics beyond basic view counts, and a public write API, are explicit follow-ups (§10).</div>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="definitions" data-title="Definitions" data-tags="product backend">
+      <div class="sec-head"><h2><span class="num">2.</span>Definitions</h2></div>
+      <p>Terms used throughout this document.</p>
+      <table>
+        <tr><th style="width:22%">Term</th><th>Meaning</th></tr>
+        <tr><td>Post</td><td>A single article with a title, body (rich text), author, tags, and a lifecycle status. Identified publicly by a URL <code>slug</code>.</td></tr>
+        <tr><td>Revision</td><td>An immutable snapshot of a post's content, written on every save. The current post points at its latest revision; older ones power history and diffing.</td></tr>
+        <tr><td>Author / Editor</td><td>Roles. An <b>author</b> writes and submits their own posts; an <b>editor</b> can review, schedule, publish, and edit anyone's.</td></tr>
+        <tr><td>Comment</td><td>A reader-submitted reply attached to a post, optionally nested under a parent comment, with its own moderation state.</td></tr>
+        <tr><td>Slug</td><td>The URL-safe identifier for a post (<code>my-first-post</code>), unique per site, derived from the title and editable before first publish.</td></tr>
+        <tr><td>Feed</td><td>A machine-readable list of recent published posts (RSS/Atom + JSON Feed), regenerated on publish.</td></tr>
+      </table>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="domain" data-title="Domain Model &amp; Schema" data-tags="backend">
+      <div class="sec-head"><h2><span class="num">3.</span>Domain Model &amp; Schema</h2></div>
+      <p>Five core tables. Every table uses a UUID primary key. Content lives in <code>revisions</code>, not on <code>posts</code>, so history is free and the current body is just the newest revision.</p>
+      <pre class="mermaid">
+erDiagram
+    USERS ||--o{ POSTS : authors
+    USERS ||--o{ COMMENTS : writes
+    POSTS ||--o{ REVISIONS : "has history"
+    POSTS ||--o{ COMMENTS : receives
+    POSTS }o--o{ TAGS : "labeled with"
+    COMMENTS |o--o{ COMMENTS : "replies to"
+
+    USERS {
+        uuid id PK
+        string email UK
+        string name
+        string role "author / editor"
+    }
+    POSTS {
+        uuid id PK
+        uuid author_id FK
+        string title
+        string slug UK
+        string status "draft / in_review / scheduled / published / archived"
+        uuid current_revision_id FK
+        datetime published_at "nullable"
+        int views_count
+    }
+    REVISIONS {
+        uuid id PK
+        uuid post_id FK
+        uuid editor_id FK
+        text body_html
+        datetime created_at
+    }
+    COMMENTS {
+        uuid id PK
+        uuid post_id FK
+        uuid parent_id FK "nullable, threading"
+        string author_name
+        text body
+        string state "pending / approved / spam"
+        datetime created_at
+    }
+    TAGS {
+        uuid id PK
+        string name UK
+        string slug UK
+    }
+      </pre>
+      <h3>Key decisions</h3>
+      <ul>
+        <li><b>Slug uniqueness</b> is enforced by a unique index on <code>posts.slug</code>. Slugs are immutable after first publish so shared links never rot.</li>
+        <li><b>Status</b> is a string-backed enum, stored as its own name (<code>status = 'published'</code>) — self-describing and reorder-proof.</li>
+        <li><b>views_count</b> is a counter cache incremented out-of-band (a queued job), never in the read path.</li>
+        <li><b>Comment threading</b> is a self-referential <code>parent_id</code>; depth is capped in the UI, not the schema.</li>
+      </ul>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="lifecycle" data-title="Post Lifecycle" data-tags="backend product">
+      <div class="sec-head"><h2><span class="num">4.</span>Post Lifecycle</h2></div>
+      <p>A post moves through a small state machine. Authors drive the left side; editors drive publication. Every transition writes a revision and an audit entry.</p>
+      <pre class="mermaid">
+stateDiagram-v2
+    [*] --> draft: author creates
+    draft --> in_review: author submits
+    in_review --> draft: editor requests changes
+    in_review --> scheduled: editor sets a future time
+    in_review --> published: editor publishes now
+    scheduled --> published: schedule fires
+    published --> archived: editor unpublishes
+    archived --> draft: editor restores to edit
+    published --> published: editor edits (new revision)
+      </pre>
+      <table>
+        <tr><th>Rule</th><th>Behavior</th></tr>
+        <tr><td>Who can publish</td><td>Editors only. Authors submit to review; they cannot self-publish in the first release.</td></tr>
+        <tr><td>Scheduling</td><td>A <code>scheduled</code> post carries a future <code>published_at</code>; a cron job flips it to <code>published</code> when the time arrives and regenerates feeds.</td></tr>
+        <tr><td>Editing published posts</td><td>Allowed — it writes a new revision and points <code>current_revision_id</code> at it. The public URL is unchanged; caches are purged for that slug.</td></tr>
+        <tr><td>Archiving</td><td>Removes a post from listings and feeds but keeps the URL returning <b>410 Gone</b> so links fail honestly rather than 404-ing silently.</td></tr>
+      </table>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="publishing" data-title="Publishing Flow" data-tags="backend frontend">
+      <div class="sec-head"><h2><span class="num">5.</span>Publishing Flow</h2></div>
+      <p>Publishing is the one write path that must stay fast and side-effect-complete. It renders the post to cacheable HTML, updates the feeds, and warms the cache — all after the transaction commits, via jobs.</p>
+      <pre class="mermaid">
+flowchart TD
+    A["Editor clicks Publish"] --> B{"Valid?<br/>title, slug, body present"}
+    B -->|no| B2["Show inline errors"]
+    B -->|yes| C["Transaction:<br/>status = published<br/>write revision + audit"]
+    C --> D["Commit"]
+    D --> E["Enqueue: render static HTML"]
+    D --> F["Enqueue: regenerate feeds"]
+    D --> G["Enqueue: purge CDN for /slug"]
+    E --> H["Cache warmed"]
+    F --> H
+    G --> H
+      </pre>
+      <div class="callout warn"><b>Ordering matters:</b> jobs run <em>after commit</em>, never inside the transaction. A job that reads the post before the commit lands would render stale content — so the publish action enqueues on the <code>after_commit</code> hook only.</div>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="comments" data-title="Comments &amp; Moderation" data-tags="backend product">
+      <div class="sec-head"><h2><span class="num">6.</span>Comments &amp; Moderation</h2></div>
+      <p>Comments post through a small pipeline that scores spam, stores the comment as <code>pending</code>, and lets an editor approve in one click. Rendering the post never waits on any of it.</p>
+      <pre class="mermaid">
+sequenceDiagram
+    actor Reader
+    participant Web as Web app
+    participant Spam as Spam scorer
+    participant DB as Database
+    participant Mod as Editor
+
+    Reader->>Web: Submit comment
+    Web->>Spam: score(text, metadata)
+    Spam-->>Web: score 0..1
+    alt score >= 0.9
+        Web->>DB: store state = spam
+    else
+        Web->>DB: store state = pending
+        Web->>Mod: notify "1 comment to review"
+    end
+    Web-->>Reader: "Thanks — awaiting review"
+    Mod->>DB: approve -> state = approved
+      </pre>
+      <ul>
+        <li><b>Never inline-blocking:</b> the spam score has a hard timeout; on timeout the comment is stored <code>pending</code> and a human decides.</li>
+        <li><b>Approved comments</b> are baked into the post's cached HTML on approval, so readers get them without a dynamic query.</li>
+        <li><b>Threading depth</b> is capped at 3 levels in the UI to keep mobile readable.</li>
+      </ul>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="frontend" data-title="Frontend &amp; Routes" data-tags="frontend">
+      <div class="sec-head"><h2><span class="num">7.</span>Frontend &amp; Routes</h2></div>
+      <p>Two surfaces: a public reading site (server-rendered, cacheable) and a private authoring app (interactive). They share nothing but the design tokens.</p>
+      <h3>Public routes</h3>
+      <table>
+        <tr><th>Route</th><th>Page</th></tr>
+        <tr><td><code>GET /</code></td><td>Home — latest published posts, paginated.</td></tr>
+        <tr><td><code>GET /posts/:slug</code></td><td>A single post with its approved comments.</td></tr>
+        <tr><td><code>GET /tags/:slug</code></td><td>Posts for one tag.</td></tr>
+        <tr><td><code>GET /feed.xml</code>, <code>/feed.json</code></td><td>RSS/Atom and JSON Feed.</td></tr>
+      </table>
+      <h3>Authoring routes</h3>
+      <table>
+        <tr><td><code>GET /studio</code></td><td>Dashboard — your drafts and the review queue.</td></tr>
+        <tr><td><code>GET /studio/posts/:id/edit</code></td><td>The editor, with autosave and live preview.</td></tr>
+        <tr><td><code>POST /studio/posts/:id/submit</code></td><td>Author submits to review.</td></tr>
+        <tr><td><code>POST /studio/posts/:id/publish</code></td><td>Editor publishes or schedules.</td></tr>
+      </table>
+      <h3>Conventions</h3>
+      <p>The reading site is plain server-rendered HTML with progressive enhancement; the studio is a single-page app. Both consume the same CSS custom properties, so a theme change is one variable swap — exactly like this document.</p>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="auth" data-title="Authentication &amp; Authorization" data-tags="backend security">
+      <div class="sec-head"><h2><span class="num">8.</span>Authentication &amp; Authorization</h2></div>
+      <p>Only the studio needs auth; the public site is anonymous. Authentication is session-cookie based; authorization is two roles and a handful of rules.</p>
+      <ul>
+        <li><b>Sessions:</b> signed, http-only, same-site cookies. No third-party auth in the first release.</li>
+        <li><b>Roles:</b> <code>author</code> and <code>editor</code>. Authors act on <em>their own</em> posts up to submission; editors act on all posts and own publication.</li>
+        <li><b>Rule of least surprise:</b> the same policy object gates both the API and the rendered buttons — a control a user can't use is never shown.</li>
+      </ul>
+      <pre><code>class PostPolicy
+  def edit?    = owner? || editor?
+  def submit?  = owner?
+  def publish? = editor?
+  def destroy? = editor?
+end</code></pre>
+      <div class="callout warn"><b>Irreversible action:</b> deleting a post is editor-only and hard-deletes its revisions after a 30-day grace window. Archiving (reversible) is the default; deletion is behind a confirm dialog.</div>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="seo" data-title="SEO, Feeds &amp; Performance" data-tags="frontend product">
+      <div class="sec-head"><h2><span class="num">9.</span>SEO, Feeds &amp; Performance</h2></div>
+      <ul>
+        <li><b>Canonical URLs &amp; sitemaps:</b> every post declares a canonical link; <code>/sitemap.xml</code> lists published posts and regenerates on publish.</li>
+        <li><b>Social cards:</b> Open Graph + Twitter meta from the post's title, excerpt, and cover image.</li>
+        <li><b>Feeds</b> are regenerated as a job on every publish/unpublish, and served from cache.</li>
+        <li><b>Performance budget:</b> a post page ships under 100 KB of critical CSS/JS and renders from CDN cache; the database is touched only on cache miss.</li>
+      </ul>
+      <div class="callout">Because published pages are static HTML, the reading site survives a database outage in read-only form — a deliberate resilience property, not an accident.</div>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="testing" data-title="Testing Strategy" data-tags="backend">
+      <div class="sec-head"><h2><span class="num">10.</span>Testing Strategy</h2></div>
+      <p>Behavior-first tests, with the lifecycle state machine as the centerpiece.</p>
+      <ul>
+        <li><b>Lifecycle:</b> every allowed transition succeeds and writes a revision + audit entry; every forbidden one is rejected (author cannot publish, published cannot skip to draft without archiving).</li>
+        <li><b>Publishing side effects:</b> jobs enqueue only <code>after_commit</code>; feeds and caches reflect the new post; archiving returns 410.</li>
+        <li><b>Comments:</b> spam-score timeout falls back to <code>pending</code>; approval bakes the comment into cached HTML; threading depth cap holds.</li>
+        <li><b>Authorization:</b> the policy matrix across both roles, for the API and the rendered controls.</li>
+        <li><b>Slugs &amp; feeds:</b> slug uniqueness and immutability after publish; feed output validates against the RSS/JSON Feed schemas.</li>
+      </ul>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="rollout" data-title="Rollout &amp; Phases" data-tags="product">
+      <div class="sec-head"><h2><span class="num">11.</span>Rollout &amp; Phases</h2></div>
+      <p>Sequential, independently shippable slices.</p>
+      <ol>
+        <li><b>Core domain:</b> users, posts, revisions, the lifecycle state machine, and the audit trail (no UI).</li>
+        <li><b>Authoring studio:</b> editor with autosave + preview, the review queue, publish/schedule.</li>
+        <li><b>Public site:</b> home, post pages, tags, static rendering + CDN caching.</li>
+        <li><b>Comments:</b> submission pipeline, spam scoring, moderation, cached rendering.</li>
+        <li><b>Feeds &amp; SEO:</b> RSS/Atom/JSON, sitemaps, social cards.</li>
+        <li><b>Follow-ups:</b> analytics dashboard, a public write API, scheduled digests.</li>
+      </ol>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="decisions" data-title="Decisions Log" data-tags="product backend">
+      <div class="sec-head"><h2><span class="num">12.</span>Decisions Log <span class="pill decided">agreed</span></h2></div>
+      <table>
+        <tr><th style="width:38%">Question</th><th>Decision</th></tr>
+        <tr><td>Where does post content live?</td><td>In immutable <code>revisions</code>; the post points at the current one. History and diffing come free.</td></tr>
+        <tr><td>Can authors publish their own posts?</td><td>No — editors own publication in the first release. Revisit if teams ask for trusted authors.</td></tr>
+        <tr><td>What happens to a deleted post's URL?</td><td>Archive returns <b>410 Gone</b>; hard delete only after a 30-day grace window.</td></tr>
+        <tr><td>How are comments kept fast?</td><td>Approved comments are baked into the post's cached HTML; the render path never queries them live.</td></tr>
+        <tr><td>How do publish side effects run?</td><td>As jobs on <code>after_commit</code> only, never inside the publish transaction.</td></tr>
+      </table>
+    </section>
+
+    <!-- ================================================================= -->
+    <section class="sec" id="open-questions" data-title="Open Questions" data-tags="product">
+      <div class="sec-head"><h2><span class="num">13.</span>Open Questions <span class="pill open">discuss</span></h2></div>
+      <p>Check an item off once the team resolves it, and record the answer in the box below it — both saved locally in your browser.</p>
+      <ul class="oq-list">
+        <li>
+          <label class="oq-top"><input type="checkbox" data-oq="q1"><span><span class="oq-q">Q1 — Should authors be able to publish directly once "trusted", or is editor review always required?</span><span class="oq-rec"><b>Recommendation:</b> require review for the first release; add a trusted-author flag later if editors become a bottleneck.</span></span></label>
+        </li>
+        <li>
+          <label class="oq-top"><input type="checkbox" data-oq="q2"><span><span class="oq-q">Q2 — Which spam scorer: a hosted service, or a self-hosted heuristic model?</span><span class="oq-rec"><b>Recommendation:</b> start with a simple self-hosted heuristic behind a timeout; swap in a service only if spam volume justifies it.</span></span></label>
+        </li>
+        <li>
+          <label class="oq-top"><input type="checkbox" data-oq="q3"><span><span class="oq-q">Q3 — Do we need scheduled posts in the first release, or is publish-now enough?</span><span class="oq-rec"><b>Recommendation:</b> include scheduling — it is a small addition to the state machine and editors expect it.</span></span></label>
+        </li>
+      </ul>
+    </section>
+
+    <footer class="doc-footer">
+      Example document · built from the pastehtml.dev design-spec template · all reader state (notes, answers, reading progress) is stored in this browser and travels inside a downloaded copy.
+    </footer>
+
+    <div id="note-layer"></div>
+  </main>
+
+  <aside id="notes-panel" aria-label="Notes">
+    <div class="np-head">
+      <b>Notes</b>
+      <button id="np-add">✎ Add</button>
+      <button id="np-close" aria-label="Close notes">✕</button>
+    </div>
+    <div id="notes-list"></div>
+  </aside>
+</div>
+
+<div id="scrim-toc"></div>
+
+<!-- Note editor modal -->
+<div id="note-modal" class="scrim" hidden>
+  <div class="box" role="dialog" aria-modal="true" aria-label="Note editor">
+    <h3 id="nm-title">New note</h3>
+    <div class="ctx" id="nm-ctx"></div>
+    <textarea id="nm-text" placeholder="Write your note…"></textarea>
+    <div class="row">
+      <button class="btn" id="nm-cancel">Cancel</button>
+      <button class="btn primary" id="nm-save">Save note</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pin popover -->
+<div id="note-popover" hidden></div>
+
+<script type="module">
+(async function () {
+  "use strict";
+
+  /* ---------- 0. Config, storage keys, seed application ---------- */
+  const html = document.documentElement;
+  const docKey = (html.dataset.docKey || 'design-doc').replace(/^>+\s*|\s*<+$/g, '').trim() || 'design-doc';
+  const K = {
+    read:  docKey + ':read',
+    oq:    docKey + ':oq',
+    oqA:   docKey + ':oq-answers',
+    notes: docKey + ':notes',
+    theme: docKey + ':theme',
+    ui:    docKey + ':ui',
+  };
+  const ALL_KEYS = Object.values(K);
+
+  // A downloaded copy carries a seed of its author's data — apply it only where
+  // this browser has no value of its own, so it never clobbers the reader's work.
+  if (window.__DDOC_SEED__) {
+    for (const [k, v] of Object.entries(window.__DDOC_SEED__)) {
+      if (localStorage.getItem(k) === null) localStorage.setItem(k, v);
+    }
+  }
+
+  // Capture pristine source BEFORE any mutation (mermaid + widgets rewrite the DOM).
+  const pristineHtml = '<!DOCTYPE html>\n' + html.outerHTML;
+
+  const load = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch { return fallback; } };
+  const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+  const sections = Array.from(document.querySelectorAll('section.sec'));
+  const secById = id => document.getElementById(id);
+  // Element refs used across modules — declared early so a requestAnimationFrame
+  // scheduled during setup can never hit them in the temporal dead zone.
+  const main = document.querySelector('main');
+  const layer = document.getElementById('note-layer');
+
+  /* ---------- 1. Reading time (~210 wpm; +45s per diagram) ---------- */
+  const readMins = new Map();
+  sections.forEach(sec => {
+    const diagrams = [...sec.querySelectorAll('.mermaid')];
+    const diagramWords = diagrams.reduce((n, d) => n + d.textContent.trim().split(/\s+/).length, 0);
+    const words = Math.max(0, sec.textContent.trim().split(/\s+/).length - diagramWords);
+    readMins.set(sec.id, Math.max(1, Math.round((words / 3.5 + diagrams.length * 45) / 60)));
+  });
+  const totalMin = [...readMins.values()].reduce((a, b) => a + b, 0);
+  document.getElementById('total-time').textContent = '~' + totalMin + ' min read';
+  document.getElementById('brand-time').textContent = '· ~' + totalMin + ' min';
+
+  /* ---------- 2. Tags ---------- */
+  const tagSet = new Set();
+  sections.forEach(sec => (sec.dataset.tags || '').split(/\s+/).filter(Boolean).forEach(t => tagSet.add(t)));
+  const allTags = [...tagSet].sort();
+  const tagColors = t => ({
+    bg: getComputedStyle(html).getPropertyValue('--tag-' + t + '-bg').trim() || 'var(--accent-soft)',
+    fg: getComputedStyle(html).getPropertyValue('--tag-' + t + '-fg').trim() || 'var(--accent-ink)',
+  });
+  const styleTag = (el, t) => { const c = tagColors(t); el.style.background = c.bg; el.style.color = c.fg; };
+
+  /* ---------- 3. Table of contents ---------- */
+  const tocList = document.getElementById('toc-list');
+  sections.forEach(sec => {
+    const li = document.createElement('li');
+    li.dataset.for = sec.id;
+    const a = document.createElement('a');
+    a.href = '#' + sec.id;
+    const num = sec.querySelector('.sec-head .num');
+    const title = document.createElement('span');
+    title.className = 'toc-title';
+    title.textContent = (num ? num.textContent + ' ' : '') + (sec.dataset.title || sec.id);
+    a.appendChild(title);
+    const tags = (sec.dataset.tags || '').split(/\s+/).filter(Boolean);
+    if (tags.length) {
+      const wrap = document.createElement('span');
+      wrap.className = 'toc-tags';
+      tags.forEach(t => { const b = document.createElement('span'); b.className = 'toc-tag'; b.textContent = t.slice(0, 2).toUpperCase(); styleTag(b, t); wrap.appendChild(b); });
+      a.appendChild(wrap);
+    }
+    const min = document.createElement('span');
+    min.className = 'toc-min';
+    min.textContent = readMins.get(sec.id) + 'm';
+    a.appendChild(min);
+    li.appendChild(a);
+    tocList.appendChild(li);
+    a.addEventListener('click', () => closeDrawer());
+  });
+
+  // Section header tags
+  sections.forEach(sec => {
+    const tags = (sec.dataset.tags || '').split(/\s+/).filter(Boolean);
+    if (!tags.length) return;
+    const wrap = document.createElement('span');
+    wrap.className = 'sec-tags note-ui';
+    tags.forEach(t => { const s = document.createElement('span'); s.className = 'sec-tag'; s.textContent = t; styleTag(s, t); wrap.appendChild(s); });
+    sec.querySelector('.sec-head').appendChild(wrap);
+  });
+
+  /* ---------- 4. Mark as read (top + bottom of each section) ---------- */
+  const readState = new Set(load(K.read, []));
+  sections.forEach(sec => {
+    const mk = pos => {
+      const row = document.createElement('div');
+      row.className = 'mark-read-row note-ui ' + pos;
+      const btn = document.createElement('button');
+      btn.className = 'mark-read';
+      btn.type = 'button';
+      if (pos === 'bottom') { const rule = document.createElement('span'); rule.className = 'rule'; row.appendChild(rule); }
+      row.appendChild(btn);
+      btn.addEventListener('click', () => {
+        readState.has(sec.id) ? readState.delete(sec.id) : readState.add(sec.id);
+        save(K.read, [...readState]);
+        refreshRead();
+      });
+      return row;
+    };
+    sec.insertBefore(mk('top'), sec.firstChild);       // above the heading
+    sec.appendChild(mk('bottom'));                     // end of section
+  });
+
+  function refreshRead() {
+    sections.forEach(sec => {
+      const read = readState.has(sec.id);
+      sec.classList.toggle('read', read);
+      sec.querySelectorAll('button.mark-read').forEach(b => b.textContent = read ? '✓ Read (undo)' : 'Mark as read');
+      const li = tocList.querySelector('[data-for="' + sec.id + '"]');
+      if (li) li.classList.toggle('read', read);
+    });
+    const done = sections.filter(s => readState.has(s.id)).length;
+    const left = sections.filter(s => !readState.has(s.id)).reduce((n, s) => n + readMins.get(s.id), 0);
+    document.getElementById('read-progress').innerHTML =
+      '<b>' + done + '</b> / ' + sections.length + ' sections read' + (left ? ' · ~' + left + ' min left' : ' · all read ✓');
+  }
+  refreshRead();
+
+  /* ---------- 5. Open questions: checkboxes + local answers ---------- */
+  const oqState = new Set(load(K.oq, []));
+  const oqAnswers = load(K.oqA, {});
+  document.querySelectorAll('input[data-oq]').forEach(cb => {
+    const id = cb.dataset.oq;
+    cb.checked = oqState.has(id);
+    cb.closest('li').classList.toggle('discussed', cb.checked);
+    cb.addEventListener('change', () => {
+      cb.checked ? oqState.add(id) : oqState.delete(id);
+      cb.closest('li').classList.toggle('discussed', cb.checked);
+      save(K.oq, [...oqState]);
+    });
+    const ta = document.createElement('textarea');
+    ta.className = 'oq-answer';
+    ta.placeholder = 'Team answer — saved locally as you type…';
+    ta.value = oqAnswers[id] || '';
+    ta.addEventListener('input', () => { oqAnswers[id] = ta.value; save(K.oqA, oqAnswers); });
+    ta.addEventListener('click', e => e.preventDefault());
+    cb.closest('li').appendChild(ta);
+  });
+
+  /* ---------- 6. Tag filter ---------- */
+  const filterWrap = document.getElementById('tag-filter');
+  let activeTag = null;
+  if (allTags.length) {
+    const mkBtn = (label, tag) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = label; b.dataset.tag = tag ?? '';
+      b.addEventListener('click', () => applyFilter(tag));
+      return b;
+    };
+    filterWrap.appendChild(mkBtn('All', null));
+    allTags.forEach(t => filterWrap.appendChild(mkBtn(t, t)));
+    applyFilter(null);
+  }
+  function applyFilter(tag) {
+    activeTag = tag;
+    filterWrap.querySelectorAll('button').forEach(b => b.classList.toggle('active', (b.dataset.tag || null) === tag));
+    sections.forEach(sec => {
+      const tags = (sec.dataset.tags || '').split(/\s+/).filter(Boolean);
+      const hide = tag && !tags.includes(tag);
+      sec.classList.toggle('tag-hidden', hide);
+      const li = tocList.querySelector('[data-for="' + sec.id + '"]');
+      if (li) li.classList.toggle('tag-hidden', hide);
+    });
+    requestAnimationFrame(renderPins);
+  }
+
+  /* ---------- 7. Theme (persist + follow system) + Mermaid ---------- */
+  // Theme applies immediately and independently of Mermaid. Mermaid then loads in
+  // the background, so a slow or blocked CDN can never stop the rest of the page
+  // from working — diagrams simply fall back to their readable source text.
+  let mermaidLib = null;
+  const savedTheme = localStorage.getItem(K.theme);
+  let dark = savedTheme ? (savedTheme === 'dark' || savedTheme === '"dark"') : matchMedia('(prefers-color-scheme: dark)').matches;
+  function applyTheme() {
+    html.dataset.theme = dark ? 'dark' : 'light';
+    document.getElementById('theme-btn').textContent = dark ? '☀️' : '🌙';
+  }
+  applyTheme();
+
+  // Stash each diagram's source so we can re-render it on theme change.
+  document.querySelectorAll('pre.mermaid').forEach(el => { el.dataset.src = el.textContent; });
+  async function renderMermaid() {
+    if (!mermaidLib) return;
+    const theme = dark ? 'dark' : 'neutral';
+    try {
+      mermaidLib.initialize({ startOnLoad: false, theme, securityLevel: 'strict', flowchart: { curve: 'basis' } });
+      const nodes = [...document.querySelectorAll('.mermaid')];
+      nodes.forEach(el => { el.innerHTML = el.dataset.src; el.removeAttribute('data-processed'); el.removeAttribute('data-failed'); });
+      await mermaidLib.run({ nodes });
+    } catch (e) {
+      document.querySelectorAll('.mermaid').forEach(el => { el.textContent = el.dataset.src; el.setAttribute('data-failed', '1'); });
+    }
+    requestAnimationFrame(renderPins);
+  }
+  document.getElementById('theme-btn').addEventListener('click', () => {
+    dark = !dark; localStorage.setItem(K.theme, dark ? 'dark' : 'light'); applyTheme(); renderMermaid();
+  });
+  // Fire-and-forget: never block the rest of the app on the diagram library.
+  import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')
+    .then(m => { mermaidLib = m.default; return renderMermaid(); })
+    .catch(() => document.querySelectorAll('.mermaid').forEach(el => el.setAttribute('data-failed', '1')));
+
+  /* ========================================================================
+     8. ANCHORED NOTES — click a block, pin a note; panel lists them all
+     Anchor = { sec: sectionId, idx: block index within section, quote }.
+     Structural, never pixel coordinates — survives reload, resize, download.
+  ======================================================================== */
+  const BLOCK_SEL = 'p, li, h2, h3, h4, pre, .callout, tr';
+  const isAnnotatable = el => el && el.matches(BLOCK_SEL) && !el.classList.contains('mermaid') && !el.closest('.mermaid') && !el.closest('.note-ui') && el.textContent.trim().length > 0;
+  function blocksOf(sec) {
+    return Array.from(sec.querySelectorAll(BLOCK_SEL)).filter(el =>
+      !el.classList.contains('mermaid') && !el.closest('.mermaid') && !el.closest('.note-ui') && el.textContent.trim().length > 0);
+  }
+  const quoteOf = el => el.textContent.trim().replace(/\s+/g, ' ').slice(0, 120);
+  function locate(el) {
+    const sec = el.closest('section.sec'); if (!sec) return null;
+    const idx = blocksOf(sec).indexOf(el); if (idx < 0) return null;
+    return { sec: sec.id, idx, quote: quoteOf(el) };
+  }
+  function resolve(note) {
+    const sec = secById(note.sec); if (!sec) return { el: null, drift: true };
+    const el = blocksOf(sec)[note.idx]; if (!el) return { el: null, drift: true };
+    return { el, drift: quoteOf(el) !== note.quote };
+  }
+
+  let notes = load(K.notes, []);
+  if (!Array.isArray(notes)) notes = [];
+  let nextId = notes.reduce((m, n) => Math.max(m, n.id || 0), 0) + 1;
+  const persistNotes = () => save(K.notes, notes);
+  const orderOf = n => { const s = sections.findIndex(x => x.id === n.sec); return (s < 0 ? 999 : s) * 1000 + (n.idx || 0); };
+
+  function renderPins() {
+    layer.innerHTML = '';
+    const byBlock = new Map();
+    notes.forEach(n => {
+      const { el } = resolve(n);
+      if (!el || el.offsetParent === null) return;               // skip unresolved / filtered-out
+      const key = n.sec + '#' + n.idx;
+      if (!byBlock.has(key)) byBlock.set(key, { el, items: [] });
+      byBlock.get(key).items.push(n);
+    });
+    const mRect = main.getBoundingClientRect();
+    byBlock.forEach(({ el, items }) => {
+      const r = el.getBoundingClientRect();
+      const pin = document.createElement('button');
+      pin.className = 'note-pin';
+      pin.type = 'button';
+      pin.textContent = items.length > 1 ? items.length : '✎';
+      pin.style.top = (r.top - mRect.top + 2) + 'px';
+      pin.style.left = Math.max(0, r.left - mRect.left - 24) + 'px';
+      pin.addEventListener('click', e => { e.stopPropagation(); openPopover(el, items, pin); });
+      layer.appendChild(pin);
+    });
+    updateCount();
+  }
+  function updateCount() {
+    document.getElementById('notes-count').textContent = notes.length;
+  }
+
+  /* ---- Add-note mode ---- */
+  let adding = false;
+  function setAdding(on) {
+    adding = on;
+    document.body.classList.toggle('adding', on);
+    document.getElementById('add-note-btn').classList.toggle('on', on);
+    layer.style.pointerEvents = on ? 'none' : '';
+    if (!on) clearHover();
+  }
+  let hovered = null;
+  const clearHover = () => { if (hovered) hovered.classList.remove('anno-hover'); hovered = null; };
+  main.addEventListener('mousemove', e => {
+    if (!adding) return;
+    const el = e.target.closest(BLOCK_SEL);
+    const target = isAnnotatable(el) ? el : null;
+    if (target !== hovered) { clearHover(); hovered = target; if (target) target.classList.add('anno-hover'); }
+  });
+  main.addEventListener('click', e => {
+    if (!adding) return;
+    const el = e.target.closest(BLOCK_SEL);
+    if (!isAnnotatable(el)) return;
+    e.preventDefault();
+    const loc = locate(el);
+    setAdding(false);
+    if (loc) openModal({ mode: 'create', loc });
+  });
+  document.getElementById('add-note-btn').addEventListener('click', () => setAdding(!adding));
+  document.getElementById('np-add').addEventListener('click', () => { setPanel(false); setAdding(true); });
+
+  /* ---- Modal (create / edit) ---- */
+  const modal = document.getElementById('note-modal');
+  const nmText = document.getElementById('nm-text');
+  const nmCtx = document.getElementById('nm-ctx');
+  const nmTitle = document.getElementById('nm-title');
+  let modalState = null;
+  function openModal(state) {
+    modalState = state;
+    if (state.mode === 'create') {
+      nmTitle.textContent = 'New note';
+      nmCtx.textContent = '“' + state.loc.quote + '”';
+      nmText.value = '';
+    } else {
+      nmTitle.textContent = 'Edit note';
+      const { el } = resolve(state.note);
+      nmCtx.textContent = '“' + (el ? quoteOf(el) : state.note.quote) + '”';
+      nmText.value = state.note.body;
+    }
+    modal.hidden = false;
+    setTimeout(() => nmText.focus(), 20);
+  }
+  function closeModal() { modal.hidden = true; modalState = null; }
+  function saveModal() {
+    const body = nmText.value.trim();
+    if (!body) { closeModal(); return; }
+    if (modalState.mode === 'create') {
+      notes.push({ id: nextId++, ...modalState.loc, body, ts: Date.now() });
+    } else {
+      const n = notes.find(x => x.id === modalState.note.id);
+      if (n) n.body = body;
+    }
+    persistNotes(); closeModal(); renderPins(); renderList();
+  }
+  document.getElementById('nm-save').addEventListener('click', saveModal);
+  document.getElementById('nm-cancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+  nmText.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveModal();
+    if (e.key === 'Escape') closeModal();
+  });
+
+  /* ---- Popover (view notes on one block) ---- */
+  const popover = document.getElementById('note-popover');
+  function openPopover(el, items, pin) {
+    popover.innerHTML = '';
+    items.forEach(n => {
+      const d = document.createElement('div'); d.className = 'pp-note'; d.textContent = n.body;
+      const acts = document.createElement('div'); acts.className = 'pp-acts';
+      const edit = document.createElement('button'); edit.textContent = 'Edit';
+      edit.addEventListener('click', () => { hidePopover(); openModal({ mode: 'edit', note: n }); });
+      const del = document.createElement('button'); del.textContent = 'Delete';
+      del.addEventListener('click', () => { deleteNote(n.id); hidePopover(); });
+      acts.append(edit, del); d.appendChild(acts); popover.appendChild(d);
+    });
+    const add = document.createElement('button'); add.className = 'btn pp-add'; add.textContent = '✎ Add another note here';
+    add.addEventListener('click', () => { const loc = locate(el); hidePopover(); if (loc) openModal({ mode: 'create', loc }); });
+    popover.appendChild(add);
+    popover.hidden = false;
+    const pRect = pin.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    let left = pRect.left + window.scrollX;
+    left = Math.max(window.scrollX + 8, Math.min(left, window.scrollX + vw - popover.offsetWidth - 8));
+    popover.style.top = (pRect.bottom + window.scrollY + 6) + 'px';
+    popover.style.left = left + 'px';
+  }
+  const hidePopover = () => { popover.hidden = true; };
+  document.addEventListener('click', e => { if (!popover.hidden && !popover.contains(e.target) && !e.target.classList.contains('note-pin')) hidePopover(); });
+
+  function deleteNote(id) {
+    notes = notes.filter(n => n.id !== id);
+    persistNotes(); renderPins(); renderList();
+  }
+
+  /* ---- Side panel / list ---- */
+  const panel = document.getElementById('notes-panel');
+  const listEl = document.getElementById('notes-list');
+  function setPanel(open) { panel.classList.toggle('open', open); document.getElementById('notes-btn').classList.toggle('on', open); }
+  document.getElementById('notes-btn').addEventListener('click', () => setPanel(!panel.classList.contains('open')));
+  document.getElementById('np-close').addEventListener('click', () => setPanel(false));
+
+  function renderList() {
+    listEl.innerHTML = '';
+    if (!notes.length) {
+      listEl.innerHTML = '<div class="np-empty">No notes yet.<br>Click <b>✎ Add note</b>, then click any paragraph to leave one.</div>';
+      updateCount(); return;
+    }
+    [...notes].sort((a, b) => orderOf(a) - orderOf(b)).forEach(n => {
+      const { el, drift } = resolve(n);
+      const sec = secById(n.sec);
+      const card = document.createElement('div'); card.className = 'note-card';
+      const loc = document.createElement('div'); loc.className = 'nc-loc';
+      loc.textContent = sec ? (sec.dataset.title || sec.id) : 'Unknown section';
+      const quote = document.createElement('div'); quote.className = 'nc-quote';
+      quote.textContent = (el ? quoteOf(el) : n.quote);
+      const body = document.createElement('div'); body.className = 'nc-body'; body.textContent = n.body;
+      card.append(loc, quote, body);
+      if (!el || drift) {
+        const w = document.createElement('div'); w.className = 'nc-drift';
+        w.textContent = el ? '⚠ the text here changed since this note was made' : '⚠ this note’s anchor no longer exists';
+        card.appendChild(w);
+      }
+      const acts = document.createElement('div'); acts.className = 'nc-acts';
+      const edit = document.createElement('button'); edit.textContent = 'Edit';
+      edit.addEventListener('click', e => { e.stopPropagation(); openModal({ mode: 'edit', note: n }); });
+      const del = document.createElement('button'); del.className = 'del'; del.textContent = 'Delete';
+      del.addEventListener('click', e => { e.stopPropagation(); deleteNote(n.id); });
+      acts.append(edit, del); card.appendChild(acts);
+      if (el) card.addEventListener('click', () => navigateTo(n));
+      listEl.appendChild(card);
+    });
+    updateCount();
+  }
+  function navigateTo(n) {
+    if (activeTag) { const sec = secById(n.sec); if (sec && !(sec.dataset.tags || '').split(/\s+/).includes(activeTag)) applyFilter(null); }
+    const { el } = resolve(n); if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('note-target-flash');
+    setTimeout(() => el.classList.remove('note-target-flash'), 1400);
+    if (matchMedia('(max-width: 900px)').matches) setPanel(false);
+  }
+
+  renderList();
+  renderPins();
+
+  /* ---------- 9. Download my copy (state baked in via a seed script) ---------- */
+  document.getElementById('download-btn').addEventListener('click', () => {
+    const seed = {};
+    ALL_KEYS.forEach(k => { const v = localStorage.getItem(k); if (v !== null) seed[k] = v; });
+    // Synthesize "<" so NO literal script tag exists anywhere in this module's
+    // source. Otherwise the strip-prior regex would match its own text (and the
+    // HTML parser could end the module early). Both the seed tag and the regex
+    // that removes a previous seed are built from this LT at runtime.
+    const LT = String.fromCharCode(60);
+    const seedOpen = LT + 'script data-seed="1">';
+    const seedClose = LT + '/script>';
+    const seedScript = seedOpen + 'window.__DDOC_SEED__ = '
+      + JSON.stringify(seed).replace(/</g, '\\u003c') + ';' + seedClose;
+    const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const stripPrior = new RegExp(esc(seedOpen) + '[\\s\\S]*?' + esc(seedClose) + '\\s*', 'g');
+    const anchor = '<div id="progress-bar"></div>';
+    const out = pristineHtml.replace(stripPrior, '').replace(anchor, anchor + '\n' + seedScript);
+    const blob = new Blob([out], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (docKey || 'design-spec') + '-annotated.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  /* ---------- 10. Chrome: progress bar, scroll-spy, mobile drawer ---------- */
+  const bar = document.getElementById('progress-bar');
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  const spy = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      tocList.querySelectorAll('li').forEach(li => li.classList.toggle('active', li.dataset.for === en.target.id));
+    });
+  }, { rootMargin: '-64px 0px -70% 0px' });
+  sections.forEach(s => spy.observe(s));
+
+  const drawer = document.getElementById('toc');
+  const scrimToc = document.getElementById('scrim-toc');
+  function openDrawer() { drawer.classList.add('open'); scrimToc.classList.add('show'); }
+  function closeDrawer() { drawer.classList.remove('open'); scrimToc.classList.remove('show'); }
+  document.getElementById('menu-btn').addEventListener('click', () => drawer.classList.contains('open') ? closeDrawer() : openDrawer());
+  scrimToc.addEventListener('click', closeDrawer);
+
+  // Recompute pin positions on reflow.
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderPins, 120); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => renderPins());
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { setAdding(false); closeDrawer(); hidePopover(); }
+  });
+})();
+</script>
+</body>
+</html>

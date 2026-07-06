@@ -7,20 +7,25 @@
 # pastehtml.dev
 
 Share HTML pages in seconds. Drop an HTML file, get a private link your friends
-can open, preview, and view the source of. No accounts, no editing, no fuss.
+can open, preview, and view the source of. Anonymous publishing still works,
+and accounts add folders, custom subdomains, view counts, browser-based re-upload
+updates, and account API keys for agent publishing into folders.
 
 ## How it works
 
 - Drag and drop (or browse for) an `.html`/`.htm` file up to 2 MB.
-- The document is published at `https://<token>.pastehtml.dev/` — its own
-  isolated origin — with an inspector page (copy link, preview, highlighted
-  source) at `/p/<token>`. Tokens are random 32-character
-  lowercase-alphanumeric IDs (~165 bits of entropy — lowercase because they
-  double as subdomains, and browsers lowercase hostnames), so links are
-  private unless shared.
-- Pastes can never be deleted, and only the holder of a paste's secret update
-  token (returned once by the API at creation) can change it. The web UI has
-  no update or delete routes at all.
+- The document is published at `https://<token>.pastehtml.dev/` — or at a
+  claimed custom subdomain like `https://launch-plan.pastehtml.dev/` — with an
+  inspector page (copy link, preview, highlighted source) at `/p/<token>`.
+  Tokens are random 32-character lowercase-alphanumeric IDs (~165 bits of
+  entropy — lowercase because they double as subdomains, and browsers lowercase
+  hostnames), so random links are private unless shared.
+- Pastes can be password-protected. Locked pastes require the password before
+  the inspector page, raw bytes, rendered preview, or live subdomain are served.
+- Signed-in users can save pastes into folders, see view counts, and re-upload a
+  replacement `.html`/`.htm` file without changing the share link. Pastes can
+  never be deleted. API-created update tokens still work for token-based
+  automated updates.
 - The share page offers a live preview (with an in-site fullscreen mode) and
   a Rouge-highlighted source view.
 - Every paste is served as a real page from its own origin —
@@ -34,7 +39,9 @@ can open, preview, and view the source of. No accounts, no editing, no fuss.
 ## Agent API
 
 Publish without a browser — ideal for AI agents that produce design documents
-or implementation plans and want to hand back a share link:
+or implementation plans and want to hand back a share link. Anonymous publishing
+still works with no credentials; signed-in users can also create account API keys
+at `/api_keys` so an agent can publish into their account and target folders.
 
 ```bash
 # Multipart upload
@@ -45,12 +52,55 @@ curl --data-binary @plan.html -H "Content-Type: text/html" \
   "https://pastehtml.dev/api/pastes?filename=plan.html"
 ```
 
-Both return `201` with
-`{ token, title, live_url, url, raw_url, render_url, update_token }`
-(or `422` with `{ errors }`). Fetch `raw_url` to read a paste's exact bytes
-back (`text/plain`, never rewritten in transit). The `update_token` is revealed exactly once — the
-server stores only a digest — but it stays valid forever and authorizes any
-number of in-place updates:
+Anonymous creation returns `201` with
+`{ token, title, custom_subdomain, folder, owner, account_paste, password_protected, views_count, live_url, url, raw_url, render_url, markdown_url, update_token }`
+(or `422` with `{ errors }`). Account-key creation returns the same paste fields
+but omits `update_token`; update account-owned pastes with the account key so
+revoking the key stops that agent's future access. Add `password=<secret>` (or
+`custom_subdomain=<name>`, which requires an account key) to creation/update
+requests; send `clear_password=1` on updates to remove a paste password. Fetch `raw_url` to read a paste's exact bytes
+back (`text/plain`, never rewritten in transit).
+
+### Account API keys for agents
+
+A signed-in user can open **API keys** from the dashboard, create a key, and give
+that secret to an agent. Use it as either `Authorization: Bearer pht_...` or
+`X-PasteHTML-API-Key: pht_...`. When a valid account key is present on
+`POST /api/pastes`, the paste is owned by that user and appears in their
+dashboard. Folder targeting is account-only:
+
+```bash
+curl -H "Authorization: Bearer $PASTEHTML_API_KEY" \
+  --data-binary @plan.html -H "Content-Type: text/html" \
+  "https://pastehtml.dev/api/pastes?filename=plan.html&folder_name=Roadmap"
+```
+
+Use `folder_name=<name>` to find or create a folder under that account,
+`folder_id=<id>` to target an existing folder, and `clear_folder=1` on updates
+to move a paste back to All pastes. Keys can also be scoped to a default folder
+when created; scoped keys always publish there, can update only pastes already
+in that folder, reject folder overrides, only list that folder through the folder
+API, and cannot create unrelated folders. Scoped keys are revoked automatically
+if the folder is deleted. Unscoped agents can discover existing folder IDs with:
+
+```bash
+curl -H "Authorization: Bearer $PASTEHTML_API_KEY" \
+  https://pastehtml.dev/api/folders
+```
+
+Unscoped keys can create folders with either nested form params
+(`folder[name]=Roadmap`) or a simple top-level `name=Roadmap`, whichever is
+easier for the client. Folder-scoped keys receive `403` on folder creation.
+
+An account key can update pastes owned by that account, while the per-paste
+`update_token` flow keeps working as long as the paste stays anonymous. If an
+agent needs to claim an anonymous paste into an account, send the account key in
+`Authorization: Bearer ...` and the paste secret separately as
+`X-Update-Token: ...`. Claiming is one-way: afterward the account key is the
+paste's update credential and the old token stops working.
+
+The `update_token` is revealed exactly once — the server stores only a digest —
+and authorizes any number of in-place updates while the paste remains anonymous:
 
 ```bash
 curl -X PATCH -H "Authorization: Bearer $UPDATE_TOKEN" \
@@ -58,9 +108,9 @@ curl -X PATCH -H "Authorization: Bearer $UPDATE_TOKEN" \
 ```
 
 Updates accept the same two body forms as creation and return `200` with the
-refreshed `{ token, title, live_url, url, raw_url, render_url }`, `403` for a wrong or
-missing update token, and `404` for an unknown paste. All API endpoints are
-rate limited per IP.
+refreshed `{ token, title, custom_subdomain, folder, owner, account_paste, password_protected, views_count, live_url, url, raw_url, render_url, markdown_url }`,
+`403` for a wrong or missing update token or an account key that does not own the paste,
+and `404` for an unknown paste. Paste publish/update endpoints are rate limited per IP at 20 requests per minute and 1,000 per day; folder API endpoints also require an account key and are rate limited per IP.
 
 Agents discover all of this on their own: the full integration guide lives at
 [`/llms.txt`](https://pastehtml.dev/llms.txt) (also pointed to from the

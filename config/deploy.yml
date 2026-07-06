@@ -79,8 +79,7 @@ aliases:
   logs: app logs -f
   dbc: app exec --interactive --reuse "bin/rails dbconsole --include-password"
 
-# Use a persistent storage volume for sqlite database files and local Active Storage files.
-# Recommended to change this to a mounted volume path that is backed up off server.
+# Persistent volume mounted at /rails/storage (Rails' default writable storage dir).
 volumes:
   - "paste_html_dev_storage:/rails/storage"
 
