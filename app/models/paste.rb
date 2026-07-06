@@ -13,13 +13,16 @@ class Paste < ApplicationRecord
   MAX_PASSWORD_BYTES = 72
 
   CUSTOM_SUBDOMAIN_FORMAT = /\A[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\z/
-  LEGACY_VANITY_SUBDOMAINS = %w[ making-of lock-it-up mark-it-down ].freeze
+  # The project's own marketing/guide pages (PagesController). They live at app
+  # paths like /making-of; the matching subdomains 301-redirect there (see routes).
+  # Reserved so a user paste can't claim one as its custom subdomain.
+  VANITY_PAGE_SUBDOMAINS = %w[ making-of lock-it-up mark-it-down ].freeze
   RESERVED_SUBDOMAINS = (
     %w[
       account admin api api-key api-keys app assets auth blog dashboard docs files help keys mail
       manage new p paste pastes raw render root session sessions sign-in sign-up signin signup
       static support uploads users www
-    ] + LEGACY_VANITY_SUBDOMAINS
+    ] + VANITY_PAGE_SUBDOMAINS
   ).freeze
 
   belongs_to :user, optional: true
@@ -95,7 +98,7 @@ class Paste < ApplicationRecord
 
     def hosted_subdomain?(subdomain)
       value = subdomain.to_s.downcase
-      token_subdomain?(value) || LEGACY_VANITY_SUBDOMAINS.include?(value) || custom_subdomain_candidate?(value)
+      token_subdomain?(value) || custom_subdomain_candidate?(value)
     end
 
     def find_by_subdomain!(subdomain)
@@ -210,9 +213,7 @@ class Paste < ApplicationRecord
     def custom_subdomain_must_be_available
       return if custom_subdomain.blank?
 
-      # Only when the value is being set/changed, so a grandfathered vanity page
-      # already holding a reserved slug (see db/seeds.rb) can still be re-saved.
-      if custom_subdomain_changed? && RESERVED_SUBDOMAINS.include?(custom_subdomain)
+      if RESERVED_SUBDOMAINS.include?(custom_subdomain)
         errors.add(:custom_subdomain, :reserved)
       end
 

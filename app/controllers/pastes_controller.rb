@@ -140,8 +140,8 @@ class PastesController < ApplicationController
   end
 
   private
-    # Resolve by token or custom subdomain, so a paste with a vanity subdomain is
-    # reachable at both /p/<token> and the memorable /p/<custom-subdomain>.
+    # Resolve by token or custom subdomain, so a paste that has a custom subdomain
+    # is reachable at both /p/<token> and the memorable /p/<custom-subdomain>.
     def set_paste
       @paste = Paste.find_by_subdomain!(params[:token])
     end

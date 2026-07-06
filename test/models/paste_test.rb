@@ -281,17 +281,22 @@ class PasteTest < ActiveSupport::TestCase
     assert paste.valid?
   end
 
-  test "a grandfathered reserved custom subdomain survives a re-save" do
-    # The vanity pages (db/seeds.rb) hold reserved slugs set past validation; a
-    # later republish must not fail the reserved check on the unchanged value.
-    paste = create_paste
-    slug = Paste::LEGACY_VANITY_SUBDOMAINS.first
-    paste.update_column(:custom_subdomain, slug)
+  test "reserves the project's own vanity-page slugs as custom subdomains" do
+    Paste::VANITY_PAGE_SUBDOMAINS.each do |slug|
+      paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html", custom_subdomain: slug)
 
-    reloaded = Paste.find(paste.id)
-    assert reloaded.valid?, reloaded.errors.full_messages.to_sentence
-    assert reloaded.republish(content: "<title>v2</title><h1>v2</h1>")
-    assert_equal slug, reloaded.reload.custom_subdomain
+      assert_not paste.valid?, "expected #{slug} to be reserved"
+      assert paste.errors[:custom_subdomain].any?
+    end
+  end
+
+  test "vanity-page slugs no longer resolve as paste-hosting subdomains" do
+    Paste::VANITY_PAGE_SUBDOMAINS.each do |slug|
+      assert_not Paste.hosted_subdomain?(slug), "#{slug} must not serve a paste"
+    end
+
+    assert Paste.hosted_subdomain?("a" * Paste::TOKEN_LENGTH), "a token still hosts a paste"
+    assert Paste.hosted_subdomain?("my-page"), "a normal custom subdomain still hosts a paste"
   end
 
   private

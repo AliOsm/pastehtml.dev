@@ -1,13 +1,25 @@
 Rails.application.routes.draw do
-  # Hosts like <token>.pastehtml.dev (32 lowercase alphanumerics), legacy vanity
-  # hosts, and user-selected custom subdomains. Matched on the host so it works
-  # with any tld_length (token.localhost in development).
+  # Hosts like <token>.pastehtml.dev (32 lowercase alphanumerics) and user-selected
+  # custom subdomains. Matched on the host so it works with any tld_length
+  # (token.localhost in development).
   paste_host = lambda do |request|
     labels = request.host.to_s.downcase.split(".")
     subdomainish_host = labels.length >= 3 || (labels.last == "localhost" && labels.length >= 2)
     next false unless subdomainish_host
 
     Paste.hosted_subdomain?(labels.first)
+  end
+
+  # The project's vanity pages moved into the app (PagesController) but keep their
+  # memorable <slug>.pastehtml.dev hosts, which now 301-redirect to the app path.
+  vanity_subdomain = ->(request) { Paste::VANITY_PAGE_SUBDOMAINS.include?(request.host.to_s.downcase.split(".").first) }
+  constraints vanity_subdomain do
+    get "/", to: redirect(status: 301) { |_params, request|
+      labels = request.host.split(".")
+      host = labels.drop(1).join(".")
+      port = request.standard_port? ? "" : ":#{request.port}"
+      "#{request.protocol}#{host}#{port}/#{labels.first.downcase}"
+    }
   end
 
   # Each paste is served from its own origin so documents get real, isolated
@@ -27,6 +39,11 @@ Rails.application.routes.draw do
     get "service-worker.js" => "rails/pwa#service_worker", as: :pwa_service_worker
 
     root "pastes#new"
+
+    # The project's own marketing/guide pages, rendered in the app layout.
+    get "making-of", to: "pages#making_of", as: :making_of
+    get "lock-it-up", to: "pages#lock_it_up", as: :lock_it_up
+    get "mark-it-down", to: "pages#mark_it_down", as: :mark_it_down
 
     resource :session, only: %i[ new create destroy ]
     resources :users, only: %i[ new create ]

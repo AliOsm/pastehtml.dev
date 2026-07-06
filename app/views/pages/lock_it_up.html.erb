@@ -1,0 +1,627 @@
+<% set_meta_tags title: "Lock It Up — Publish a Password-Protected, Encrypted HTML Page", description: "A step-by-step guide to publishing an end-to-end encrypted, password-protected page on pastehtml.dev. Encrypt in your browser with the Web Crypto API — the server only ever sees ciphertext." %>
+<div class="vanity-page">
+<style>
+  /* ===== Shared template: base chrome (scoped to .vanity-page) ===== */
+  :root {
+    --ink: #18120e;
+    --paper: #fff8ec;
+    --red: #e62429;
+    --yellow: #ffd400;
+    --blue: #0072ce;
+  }
+  .vanity-page * { margin: 0; box-sizing: border-box; }
+  .vanity-page {
+    background-color: var(--paper);
+    background-image:
+      radial-gradient(circle at 25% 15%, rgb(255 212 0 / 0.18), transparent 42%),
+      radial-gradient(circle at 85% 80%, rgb(0 114 206 / 0.10), transparent 45%),
+      radial-gradient(circle, rgb(24 18 14 / 0.07) 1px, transparent 1.4px);
+    background-size: auto, auto, 12px 12px;
+    color: var(--ink);
+    font-family: Inter, "IBM Plex Sans Arabic", system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .vanity-page .wrap { max-width: 56rem; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  .vanity-page .bangers { font-family: Bangers, Lalezar, Impact, sans-serif; letter-spacing: 0.02em; }
+  .vanity-page .mono { font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; }
+
+  .vanity-page a { color: var(--blue); }
+
+  /* Hero */
+  .vanity-page header { text-align: center; padding: 2rem 0 1rem; position: relative; }
+  .vanity-page .logo {
+    display: inline-block; background: #fff; border: 3px solid var(--ink); border-radius: 10px;
+    box-shadow: 5px 5px 0 0 var(--ink); padding: 0.2rem 1.1rem; transform: rotate(-2deg);
+    font-size: 1.6rem; color: var(--ink); text-decoration: none; cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .vanity-page .logo:hover { transform: rotate(-2deg) translate(-1px, -1px); box-shadow: 6px 6px 0 0 var(--ink); }
+  .vanity-page .logo:active { transform: rotate(-2deg) translate(2px, 2px); box-shadow: 2px 2px 0 0 var(--ink); }
+  .vanity-page .logo span { color: var(--red); }
+  .vanity-page h1 {
+    font-size: clamp(2.7rem, 8.5vw, 5rem); line-height: 1.02; margin-top: 1.5rem;
+    text-shadow: 3px 3px 0 var(--paper), 6px 6px 0 var(--red); text-wrap: balance;
+  }
+  .vanity-page .sub { margin: 1.25rem auto 0; max-width: 46ch; color: rgb(24 18 14 / 0.7); font-size: 1.05rem; text-wrap: pretty; }
+  .vanity-page .badge-row { margin-top: 1.5rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+  .vanity-page .chip {
+    background: var(--yellow); border: 2px solid var(--ink); box-shadow: 3px 3px 0 0 var(--ink);
+    padding: 0.15rem 0.7rem; font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; font-size: 0.72rem;
+    letter-spacing: 0.08em; text-transform: uppercase; transform: rotate(-1deg);
+  }
+  .vanity-page .chip:nth-child(2n) { transform: rotate(1.2deg); background: #fff; }
+  .vanity-page .burst {
+    position: absolute; top: -0.5rem; right: 0; width: 110px; transform: rotate(14deg);
+    filter: drop-shadow(3px 3px 0 var(--ink));
+  }
+  @media (max-width: 640px) { .vanity-page .burst { width: 78px; right: -0.25rem; } }
+
+  /* Section dividers */
+  .vanity-page .issue { margin: 3.5rem 0 1.75rem; display: flex; align-items: center; gap: 1rem; }
+  .vanity-page .issue::before, .vanity-page .issue::after { content: ""; flex: 1; border-top: 3px solid var(--ink); }
+  .vanity-page .issue h2 {
+    font-family: Bangers, Lalezar, Impact, sans-serif; letter-spacing: 0.03em; font-size: 1.6rem;
+    background: var(--ink); color: var(--paper); border-radius: 8px; padding: 0.25rem 1.2rem;
+    box-shadow: 4px 4px 0 0 var(--red); transform: rotate(-1deg); text-align: center;
+  }
+
+  /* Prose */
+  .vanity-page p.lede { font-size: 1.05rem; }
+  .vanity-page .wrap p + p { margin-top: 0.9rem; }
+  .vanity-page .panel {
+    background: #fff; border: 3px solid var(--ink); border-radius: 14px;
+    box-shadow: 6px 6px 0 0 var(--ink); padding: 1.4rem 1.5rem; margin: 1.5rem 0;
+  }
+  .vanity-page .panel h3 { font-family: Bangers, Lalezar, Impact, sans-serif; font-size: 1.5rem; letter-spacing: 0.03em; margin-bottom: 0.5rem; }
+  .vanity-page code {
+    font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; font-size: 0.83em; background: rgb(24 18 14 / 0.07);
+    border-radius: 4px; padding: 0.05rem 0.3rem;
+  }
+  .vanity-page pre {
+    background: var(--ink); color: var(--paper); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: 5px 5px 0 0 var(--red); padding: 1rem 1.1rem; overflow-x: auto; margin: 1.2rem 0;
+  }
+  .vanity-page pre code { background: none; padding: 0; font-size: 0.82rem; line-height: 1.55; color: var(--paper); }
+  /* Keep highlight.js token colors, but let our ink panel show through. */
+  .vanity-page pre code.hljs { background: transparent; padding: 0; }
+
+  /* Numbered steps */
+  .vanity-page ol.steps { list-style: none; counter-reset: step; padding: 0; margin: 1.25rem 0; display: grid; gap: 0.85rem; }
+  .vanity-page ol.steps li { position: relative; padding-inline-start: 3rem; min-height: 2rem; }
+  .vanity-page ol.steps li::before {
+    counter-increment: step; content: counter(step); position: absolute; inset-inline-start: 0; top: -0.1rem;
+    width: 2.1rem; height: 2.1rem; background: var(--yellow); border: 3px solid var(--ink); border-radius: 50%;
+    box-shadow: 3px 3px 0 0 var(--ink); display: grid; place-items: center;
+    font-family: Bangers, Lalezar, Impact, sans-serif; font-size: 1.2rem;
+  }
+
+  /* Callout */
+  .vanity-page .callout {
+    border: 3px solid var(--ink); border-radius: 12px; padding: 1rem 1.2rem; margin: 1.4rem 0;
+    box-shadow: 5px 5px 0 0 var(--ink); background: #fff7d6;
+  }
+  .vanity-page .callout.warn { background: #ffe1e1; box-shadow: 5px 5px 0 0 var(--red); }
+  .vanity-page .callout .tag {
+    font-family: Bangers, Lalezar, Impact, sans-serif; letter-spacing: 0.04em; font-size: 1.1rem;
+    display: inline-block; margin-bottom: 0.2rem;
+  }
+
+  /* Forge widget */
+  .vanity-page .forge { background: #fff; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 8px 8px 0 0 var(--ink); padding: 1.5rem 1.5rem 1.7rem; margin: 1.5rem 0; }
+  .vanity-page .forge label { display: block; font-weight: 600; margin: 0.9rem 0 0.35rem; font-size: 0.92rem; }
+  .vanity-page .forge textarea, .vanity-page .forge input[type="text"], .vanity-page .forge input[type="password"] {
+    width: 100%; border: 3px solid var(--ink); border-radius: 10px; padding: 0.65rem 0.8rem;
+    font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; font-size: 0.85rem; background: var(--paper); color: var(--ink);
+    box-shadow: inset 2px 2px 0 rgb(24 18 14 / 0.06);
+  }
+  .vanity-page .forge textarea { min-height: 9rem; resize: vertical; line-height: 1.5; }
+  .vanity-page .forge textarea:focus, .vanity-page .forge input:focus { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .vanity-page .row { display: flex; gap: 0.9rem; flex-wrap: wrap; }
+  .vanity-page .row > div { flex: 1; min-width: 12rem; }
+  .vanity-page .btn {
+    display: inline-block; cursor: pointer; font-family: Bangers, Lalezar, Impact, sans-serif; letter-spacing: 0.03em;
+    font-size: 1.2rem; background: var(--yellow); color: var(--ink); border: 3px solid var(--ink);
+    border-radius: 10px; box-shadow: 4px 4px 0 0 var(--ink); padding: 0.4rem 1.2rem; margin-top: 1.2rem;
+    transition: transform 100ms ease, box-shadow 100ms ease;
+  }
+  .vanity-page .btn:hover { transform: translate(-1px,-1px); box-shadow: 5px 5px 0 0 var(--ink); }
+  .vanity-page .btn:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 0 var(--ink); }
+  .vanity-page .btn.red { background: var(--red); color: #fff; }
+  .vanity-page .btn.small { font-size: 0.95rem; padding: 0.25rem 0.8rem; margin-top: 0; }
+  .vanity-page .btn[disabled] { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 0 var(--ink); }
+  .vanity-page .actions { display: flex; gap: 0.7rem; flex-wrap: wrap; align-items: center; margin-top: 1rem; }
+  .vanity-page .status { font-family: "IBM Plex Mono", "IBM Plex Sans Arabic", monospace; font-size: 0.78rem; color: rgb(24 18 14 / 0.7); }
+  .vanity-page .status.ok { color: #0a7a2f; }
+  .vanity-page .status.err { color: var(--red); }
+  .vanity-page .out-wrap { margin-top: 1.1rem; }
+  .vanity-page .out-wrap[hidden] { display: none; }
+
+  .vanity-page footer {
+    margin-top: 4rem; text-align: center; border-top: 3px solid var(--ink); padding-top: 2rem;
+    color: rgb(24 18 14 / 0.7); font-size: 0.9rem;
+  }
+  .vanity-page footer .bangers { font-size: 1.6rem; color: var(--ink); display: block; margin-bottom: 0.6rem; }
+  .vanity-page footer p + p { margin-top: 0.4rem; }
+
+  /* ---- RTL adjustments for the Arabic edition ---- */
+  /* Arabic script is cursive: any letter-spacing severs the joins. */
+  .vanity-page [dir="rtl"] * { letter-spacing: normal; }
+  /* Keep Latin code/identifiers as isolated LTR runs inside Arabic text. */
+  .vanity-page [dir="rtl"] code, .vanity-page [dir="rtl"] .mono, .vanity-page [dir="rtl"] .status { unicode-bidi: isolate; }
+  .vanity-page [dir="rtl"] code { direction: ltr; }
+  /* The Arabic display face (Lalezar) needs real leading on the giant heading. */
+  .vanity-page [dir="rtl"] h1 { line-height: 1.3; }
+  /* Move the starburst to the top-left corner. */
+  .vanity-page [dir="rtl"] .burst { right: auto; left: 0; transform: rotate(-14deg); }
+  @media (max-width: 640px) { .vanity-page [dir="rtl"] .burst { left: -0.25rem; right: auto; } }
+</style>
+
+<%# highlight.js github-dark theme (CDN). Placed inside the wrapper, after app CSS, so it loads after application.css. %>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+
+<!-- ===================== ENGLISH ===================== -->
+<div class="wrap" id="en" data-lang="en"<%= " hidden" if I18n.locale == :ar %>>
+
+<h1>Lock It Up</h1>
+
+<p class="lede">Every paste on pastehtml.dev is served from its own isolated origin — a real
+<code>https://&lt;token&gt;.pastehtml.dev/</code> page where your scripts actually run. That one fact is
+all we need to build a vault: ship a page that carries an <strong>encrypted blob</strong> plus a tiny
+unlock screen, and let the reader's own browser do the decryption once they type the password.</p>
+
+<div class="callout">
+  <span class="tag">The big idea</span>
+  <p>The plaintext and the password <strong>never touch the server</strong>. You encrypt locally, publish
+  only the ciphertext, and share the link plus the password through a <em>separate</em> channel. Lose the
+  link <em>and</em> the password and there is genuinely nothing to recover — which is exactly the point.</p>
+</div>
+
+<div class="issue"><h2>How it works</h2></div>
+
+<p>The whole scheme rides on the browser's built-in <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API">Web Crypto API</a> — no libraries, no CDN:</p>
+
+<ol class="steps">
+  <li>Your password is stretched into a 256-bit key with <strong>PBKDF2</strong> (SHA-256, 250,000 iterations) over a random salt. Stretching makes brute-forcing a weak password slow.</li>
+  <li>Your content is encrypted with <strong>AES-256-GCM</strong> using a fresh random IV. GCM is <em>authenticated</em>, so a wrong password (or any tampering) fails loudly instead of silently returning garbage.</li>
+  <li>The salt, IV, and ciphertext are base64-encoded and baked into a self-contained HTML file alongside a comic-styled unlock screen.</li>
+  <li>You publish that file. The reader opens it, types the password, and the page decrypts the blob and renders your real content in a sandboxed frame — all client-side.</li>
+</ol>
+
+<p>Below is a working forge that does steps 1–3 for you, right here on this page (it uses your browser's
+crypto, nothing is uploaded). Paste your secret, pick a password, and download a ready-to-publish locked page.</p>
+
+<div class="issue"><h2>The Locker Forge</h2></div>
+
+<div class="forge">
+  <label>Secret content — plain text <em>or</em> full HTML</label>
+  <textarea class="f-secret" dir="auto" placeholder="Paste the text or HTML you want to protect…
+e.g. &lt;h1&gt;Party address&lt;/h1&gt;&lt;p&gt;42 Comic Lane, 8pm. Bring snacks.&lt;/p&gt;"></textarea>
+
+  <div class="row">
+    <div>
+      <label>Page title (shown locked)</label>
+      <input type="text" class="f-title" value="Protected page" autocomplete="off">
+    </div>
+    <div>
+      <label>Password</label>
+      <input type="password" class="f-pw" dir="ltr" placeholder="Choose a strong password" autocomplete="new-password">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn f-build">🔒 Build my locked page</button>
+    <span class="status f-status" role="status" aria-live="polite"></span>
+  </div>
+
+  <div class="out-wrap f-outwrap" hidden>
+    <div class="actions">
+      <button type="button" class="btn small red f-download">⬇ Download .html</button>
+      <button type="button" class="btn small f-copy">⧉ Copy HTML</button>
+      <button type="button" class="btn small f-preview">↗ Open preview</button>
+    </div>
+    <p class="status" style="margin-top:0.7rem">Then drag the file onto <a href="https://pastehtml.dev">pastehtml.dev</a>, or publish it with the API (below).</p>
+  </div>
+</div>
+
+<div class="callout warn">
+  <span class="tag">⚠ Read me before you trust it</span>
+  <p>This is real cryptography, but its strength is <strong>entirely your password</strong>. A short or
+  guessable password can be cracked offline by anyone who has the link, because they hold the ciphertext.
+  Use a long, random passphrase for anything that matters. This protects against casual snooping and
+  shoulder-surfing search engines — it is not a replacement for a secrets manager.</p>
+</div>
+
+<div class="issue"><h2>Publish it</h2></div>
+
+<p>However you built the file, publishing is the same two-button affair:</p>
+
+<div class="panel">
+  <h3>Option A — Drag &amp; drop</h3>
+  <p>Open <a href="https://pastehtml.dev">pastehtml.dev</a> and drop the <code>.html</code> file onto the
+  zone. You get back a private <code>https://&lt;token&gt;.pastehtml.dev/</code> link instantly. Share that
+  link one place, the password another.</p>
+</div>
+
+<div class="panel">
+  <h3>Option B — The API (great for agents &amp; scripts)</h3>
+  <p>Pipe the file straight up with <code>curl</code>:</p>
+<pre dir="ltr"><code class="language-bash">curl -F "file=@protected.html" https://pastehtml.dev/api/pastes</code></pre>
+  <p>You get <code>201</code> with the <code>live_url</code> to share and a one-time <code>update_token</code>
+  — save the token if you ever want to re-encrypt and <code>PATCH</code> the same link in place. Full contract
+  at <a href="https://pastehtml.dev/llms.txt">pastehtml.dev/llms.txt</a>.</p>
+</div>
+
+<div class="issue"><h2>What's inside the locked page</h2></div>
+
+<p>No magic — just the mirror image of the forge. The published file embeds your blob in a
+<code>&lt;script type="application/json"&gt;</code> tag and runs this on unlock. Here is the exact template the
+forge ships (read it, audit it, tweak it):</p>
+
+<pre dir="ltr"><code class="f-tpl language-html">Loading template…</code></pre>
+
+<p>When the password is right, the decrypted bytes are dropped into a sandboxed <code>&lt;iframe&gt;</code> via
+<code>srcdoc</code>, so even full HTML documents render correctly while staying isolated. When it is wrong,
+AES-GCM's authentication tag rejects it and the unlock screen shakes — no plaintext leaks either way.</p>
+
+</div><!-- /#en -->
+
+<!-- ===================== ARABIC ===================== -->
+<div class="wrap" id="ar" data-lang="ar" dir="rtl"<%= " hidden" unless I18n.locale == :ar %>>
+
+<h1 dir="rtl">أَقفِلها بإحكام</h1>
+
+<p class="lede">لكلّ صفحة على <bdi dir="ltr">pastehtml.dev</bdi> أصلٌ مستقلٌّ خاصٌّ بها — صفحةٌ
+حقيقيّة على العنوان <code>https://&lt;token&gt;.pastehtml.dev/</code> تعمل فيها سكربتاتك فعليًّا. هذه الحقيقة
+وحدها تكفي لبناء خزنة: انشُر صفحةً تحمل <strong>كتلةً مُشفَّرة</strong> وشاشة فتحٍ صغيرة، ودَع متصفِّح
+القارئ يتولّى فكّ التشفير بمجرّد أن يُدخل كلمة المرور.</p>
+
+<div class="callout">
+  <span class="tag">الفكرة الكبرى</span>
+  <p>لا يلمس النصّ الأصليّ ولا كلمة المرور الخادمَ <strong>إطلاقًا</strong>. تُشفِّر محليًّا، وتنشر النصّ
+  المُشفَّر وحده، وتشارك الرابط وكلمة المرور عبر <em>قناتين منفصلتين</em>. وإن فقدتَ الرابط <em>وكلمة
+  المرور</em> معًا فلا سبيل لاستعادة شيء — وهذا هو المقصود تمامًا.</p>
+</div>
+
+<div class="issue"><h2>كيف تعمل الحيلة</h2></div>
+
+<p>تقوم الفكرة كلّها على واجهة <a href="https://developer.mozilla.org/ar/docs/Web/API/Web_Crypto_API">Web Crypto</a>
+المدمجة في المتصفِّح — بلا مكتبات ولا شبكات توصيل محتوى (CDN):</p>
+
+<ol class="steps">
+  <li>تُمَدَّد كلمة مرورك إلى مفتاحٍ بطول 256 بِت باستخدام <strong>PBKDF2</strong> (بخوارزمية SHA-256 و250,000 تكرار) مع <em>مِلحٍ</em> عشوائيّ. وهذا التمديد يُبطئ محاولات تخمين كلمات المرور الضعيفة.</li>
+  <li>يُشفَّر محتواك بخوارزمية <strong>AES-256-GCM</strong> مع متّجه تهيئة (IV) عشوائيّ جديد. وبما أنّ GCM <em>موثَّقة</em>، فإنّ كلمة المرور الخاطئة (أو أيّ عبثٍ بالملف) تفشل بوضوح بدلًا من أن تُعيد خليطًا لا معنى له بصمت.</li>
+  <li>يُرمَّز المِلح والـ IV والنصّ المُشفَّر بترميز base64، وتُدمَج جميعًا في ملفّ HTML مكتفٍ ذاتيًّا بجانب شاشة فتحٍ بأسلوب الكوميكس.</li>
+  <li>تنشُر ذلك الملفّ. يفتحه القارئ ويُدخل كلمة المرور، فتفكّ الصفحة تشفير الكتلة وتعرض محتواك الحقيقيّ داخل إطارٍ معزول — كلّ ذلك داخل المتصفِّح.</li>
+</ol>
+
+<p>في الأسفل أداةٌ عاملة تنفّذ الخطوات 1–3 نيابةً عنك، هنا على هذه الصفحة (تستخدم تشفير متصفِّحك، ولا تُرفَع
+أيّ بيانات). الصِق سرّك، اختَر كلمة مرور، ونزِّل صفحةً مقفلةً جاهزةً للنشر.</p>
+
+<div class="issue"><h2>مِسبَك الأقفال</h2></div>
+
+<div class="forge">
+  <label>المحتوى السرّي — نصّ عادي <em>أو</em> صفحة HTML كاملة</label>
+  <textarea class="f-secret" placeholder="الصِق النصّ أو شيفرة HTML التي تريد حمايتها…
+مثال: &lt;h1&gt;عنوان الحفلة&lt;/h1&gt;&lt;p&gt;شارع الكوميكس 42، الثامنة مساءً.&lt;/p&gt;"></textarea>
+
+  <div class="row">
+    <div>
+      <label>عنوان الصفحة (يظهر وهي مقفلة)</label>
+      <input type="text" class="f-title" value="صفحة محمية" autocomplete="off">
+    </div>
+    <div>
+      <label>كلمة المرور</label>
+      <input type="password" class="f-pw" placeholder="اختَر كلمة مرور قويّة" autocomplete="new-password">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn f-build">🔒 ابنِ صفحتي المقفلة</button>
+    <span class="status f-status" role="status" aria-live="polite"></span>
+  </div>
+
+  <div class="out-wrap f-outwrap" hidden>
+    <div class="actions">
+      <button type="button" class="btn small red f-download">⬇ تنزيل ملف ‎.html</button>
+      <button type="button" class="btn small f-copy">⧉ نسخ HTML</button>
+      <button type="button" class="btn small f-preview">↗ فتح المعاينة</button>
+    </div>
+    <p class="status" style="margin-top:0.7rem">بعدها اسحب الملفّ إلى <a href="https://pastehtml.dev">pastehtml.dev</a>، أو انشُره عبر الـ <bdi dir="ltr">API</bdi> (بالأسفل).</p>
+  </div>
+</div>
+
+<div class="callout warn">
+  <span class="tag">⚠ اقرأ هذا قبل أن تثق به</span>
+  <p>هذا تشفيرٌ حقيقيّ، لكنّ قوّته مستمدّةٌ <strong>بالكامل</strong> من قوّة كلمة مرورك. كلمة المرور القصيرة أو
+  سهلة التخمين يمكن كسرها دون اتصالٍ بالإنترنت من قِبَل أيّ شخصٍ يملك الرابط، لأنّه يحوز النصّ المُشفَّر.
+  استخدم عبارة مرورٍ طويلةً وعشوائيّةً لأيّ شيءٍ مهمّ. هذا يحميك من التطفّل العابر ومن فهرسة محرّكات البحث
+  — وهو ليس بديلًا عن مدير أسرار.</p>
+</div>
+
+<div class="issue"><h2>انشُرها</h2></div>
+
+<p>أيًّا كانت طريقة بنائك للملفّ، فالنشر يتمّ بالخطوتين ذاتهما:</p>
+
+<div class="panel">
+  <h3>الخيار (أ) — السحب والإفلات</h3>
+  <p>افتح <a href="https://pastehtml.dev">pastehtml.dev</a> وأفلِت ملفّ <code>.html</code> في المنطقة
+  المخصّصة. ستحصل فورًا على رابطٍ خاصّ بالشكل <code>https://&lt;token&gt;.pastehtml.dev/</code>. شارِك الرابط
+  في مكان، وكلمة المرور في مكانٍ آخر.</p>
+</div>
+
+<div class="panel">
+  <h3>الخيار (ب) — واجهة الـ API (مثاليّة للوكلاء والسكربتات)</h3>
+  <p>ارفع الملفّ مباشرةً باستخدام <code>curl</code>:</p>
+<pre dir="ltr"><code class="language-bash">curl -F "file=@protected.html" https://pastehtml.dev/api/pastes</code></pre>
+  <p>ستحصل على <code>201</code> يتضمّن <code>live_url</code> للمشاركة ورمز تحديثٍ <code>update_token</code>
+  يُكشَف مرّةً واحدة — احفظه إن أردتَ يومًا إعادة التشفير وتحديث الرابط نفسه بـ <code>PATCH</code>. الدليل
+  الكامل في <a href="https://pastehtml.dev/llms.txt">pastehtml.dev/llms.txt</a>.</p>
+</div>
+
+<div class="issue"><h2>ما الذي بداخل الصفحة المقفلة</h2></div>
+
+<p>لا سحر هنا — مجرّد صورةٍ معكوسة للمِسبَك. يُضمِّن الملفّ المنشور كتلتك داخل وسم
+<code>&lt;script type="application/json"&gt;</code> ويُنفِّذ هذه الشيفرة عند الفتح. وهذا هو القالب نفسه الذي تنتجه
+الأداة (اقرأه، دقِّقه، عدِّله):</p>
+
+<pre dir="ltr"><code class="f-tpl language-html">Loading template…</code></pre>
+
+<p>عندما تكون كلمة المرور صحيحة، تُوضَع البيانات بعد فكّ تشفيرها في إطار <code>&lt;iframe&gt;</code> معزول عبر
+<code>srcdoc</code>، فتُعرَض حتى مستندات HTML الكاملة عرضًا سليمًا مع بقائها معزولة. وعندما تكون خاطئة،
+يرفضها وسم التوثيق في AES-GCM فترتجّ شاشة الفتح — ولا يتسرّب أيّ نصٍّ صريحٍ في الحالتين.</p>
+
+</div><!-- /#ar -->
+
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var ITER = 250000;
+  var enc = new TextEncoder();
+
+  function bytesToB64(bytes) {
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+
+  // Localized UI baked into each generated locked page.
+  var I18N = {
+    en: { sub: "This page is encrypted. Enter the password to unlock it.", ph: "Password",
+          btn: "Unlock", unlocking: "Unlocking…", wrong: "Wrong password — try again.",
+          foot: "Encrypted in the browser" },
+    ar: { sub: "هذه الصفحة مُشفّرة. أدخِل كلمة المرور لفتحها.",
+          ph: "كلمة المرور", btn: "افتح",
+          unlocking: "يجري الفتح…",
+          wrong: "كلمة مرور خاطئة — حاوِل مجددًا.",
+          foot: "مُشفّرة داخل المتصفّح" }
+  };
+
+  // Forge-side localized strings (this page's widget).
+  var STR = {
+    en: {
+      needContent: "Add some content to protect first.", needPw: "Pick a password.",
+      noCrypto: "This browser has no Web Crypto API.", encrypting: "Encrypting in your browser…",
+      done: function (kb) { return "Done — " + kb + " KB, encrypted locally."; },
+      fail: function (m) { return "Encryption failed: " + m; },
+      copied: "Copied the full HTML to your clipboard.", clip: "Clipboard blocked — use Download instead.",
+      popup: "Popup blocked — allow popups to preview.", defTitle: "Protected page"
+    },
+    ar: {
+      needContent: "أضِف بعض المحتوى لحمايته أولاً.",
+      needPw: "اختَر كلمة مرور.",
+      noCrypto: "هذا المتصفّح لا يدعم واجهة Web Crypto.",
+      encrypting: "يجري التشفير داخل متصفّحك…",
+      done: function (kb) { return "تمّ — " + kb + " كيلوبايت، مُشفّرة محليًّا."; },
+      fail: function (m) { return "فشل التشفير: " + m; },
+      copied: "نُسِخت صفحة HTML كاملةً إلى الحافظة.",
+      clip: "تعذّر الوصول إلى الحافظة — استخدم التنزيل بدلاً منه.",
+      popup: "حُظِرت النافذة المنبثقة — اسمح بالنوافذ المنبثقة للمعاينة.",
+      defTitle: "صفحة محمية"
+    }
+  };
+
+  // The locked-page template. Inner closing script tags are written <\/script>
+  // so the parser of THIS document doesn't end the outer script early; the
+  // string value is correct, well-formed HTML. Placeholders get replaced per
+  // build. Anything user-controlled is JSON/base64/escaped, never raw.
+  var TEMPLATE = [
+'<!DOCTYPE html>',
+'<html lang="__LANG__" dir="__DIR__">',
+'<head>',
+'<meta charset="utf-8">',
+'<meta name="viewport" content="width=device-width, initial-scale=1">',
+'<meta name="robots" content="noindex">',
+'<title>__TITLE__</title>',
+'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
+'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Lalezar&family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap">',
+'<style>',
+'  :root { --ink:#18120e; --paper:#fff8ec; --red:#e62429; --yellow:#ffd400; --blue:#0072ce; }',
+'  * { margin:0; box-sizing:border-box; }',
+'  html,body { height:100%; }',
+'  body {',
+'    background-color:var(--paper);',
+'    background-image:radial-gradient(circle, rgb(24 18 14 / 0.07) 1px, transparent 1.4px);',
+'    background-size:12px 12px;',
+'    color:var(--ink); font-family:system-ui,-apple-system,"IBM Plex Sans Arabic",Segoe UI,Roboto,sans-serif;',
+'    display:grid; place-items:center; padding:1.5rem;',
+'  }',
+'  .lock { width:min(26rem,100%); background:#fff; border:3px solid var(--ink); border-radius:16px;',
+'    box-shadow:8px 8px 0 0 var(--ink); padding:2rem 1.6rem; text-align:center; }',
+'  .ico { font-size:2.6rem; line-height:1; }',
+'  h1 { font-family:"Bangers","Lalezar",Impact,sans-serif; letter-spacing:0.03em; font-size:2rem; margin:0.6rem 0 0.2rem;',
+'    text-shadow:2px 2px 0 var(--red); line-height:1.2; }',
+'  p.t { color:rgb(24 18 14 / 0.7); font-size:0.9rem; margin-bottom:1.2rem; }',
+'  form { display:grid; gap:0.8rem; }',
+'  input { width:100%; border:3px solid var(--ink); border-radius:10px; padding:0.6rem 0.8rem;',
+'    font-size:1rem; background:var(--paper); color:var(--ink); font-family:inherit; }',
+'  input:focus { outline:3px solid var(--blue); outline-offset:2px; }',
+'  button { cursor:pointer; font-family:"Bangers","Lalezar",Impact,sans-serif; letter-spacing:0.03em; font-size:1.3rem;',
+'    background:var(--yellow); border:3px solid var(--ink); border-radius:10px; box-shadow:4px 4px 0 0 var(--ink);',
+'    padding:0.45rem; transition:transform 100ms,box-shadow 100ms; }',
+'  button:hover { transform:translate(-1px,-1px); box-shadow:5px 5px 0 0 var(--ink); }',
+'  button:active { transform:translate(2px,2px); box-shadow:2px 2px 0 0 var(--ink); }',
+'  button[disabled] { opacity:0.6; cursor:wait; }',
+'  .err { color:var(--red); font-size:0.85rem; font-weight:600; min-height:1.1rem; }',
+'  [dir="rtl"] * { letter-spacing:normal; }',
+'  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(7px)} 50%{transform:translateX(-7px)} 75%{transform:translateX(4px)} }',
+'  .shake { animation:shake 220ms; }',
+'  iframe { position:fixed; inset:0; width:100%; height:100%; border:0; background:#fff; }',
+'  footer { margin-top:1.2rem; font-size:0.72rem; color:rgb(24 18 14 / 0.5); }',
+'  footer a { color:var(--blue); }',
+'</style>',
+'</head>',
+'<body>',
+'  <main class="lock" id="lock">',
+'    <div class="ico">&#128274;</div>',
+'    <h1>__TITLE__</h1>',
+'    <p class="t" id="sub"></p>',
+'    <form id="f">',
+'      <input type="password" id="pw" autocomplete="current-password" autofocus>',
+'      <button type="submit" id="go"></button>',
+'      <div class="err" id="err" role="alert"></div>',
+'    </form>',
+'    <footer><span id="foot"></span> &middot; <a href="https://pastehtml.dev">pastehtml.dev</a></footer>',
+'  </main>',
+'  <script type="application/json" id="i18n">__I18N__<\/script>',
+'  <script type="application/json" id="vault">__PAYLOAD__<\/script>',
+'  <script>',
+'  (function () {',
+'    "use strict";',
+'    var T = JSON.parse(document.getElementById("i18n").textContent);',
+'    var data = JSON.parse(document.getElementById("vault").textContent);',
+'    var dec = new TextDecoder();',
+'    function b64(s){ var b=atob(s), a=new Uint8Array(b.length); for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i); return a; }',
+'    async function unlock(pw) {',
+'      var salt=b64(data.salt), iv=b64(data.iv), ct=b64(data.ct);',
+'      var base=await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);',
+'      var key=await crypto.subtle.deriveKey({name:"PBKDF2",salt:salt,iterations:data.iter,hash:"SHA-256"},',
+'        base, {name:"AES-GCM",length:256}, false, ["decrypt"]);',
+'      var buf=await crypto.subtle.decrypt({name:"AES-GCM",iv:iv}, key, ct);',
+'      return dec.decode(buf);',
+'    }',
+'    var f=document.getElementById("f"), pw=document.getElementById("pw"),',
+'        err=document.getElementById("err"), go=document.getElementById("go"), lock=document.getElementById("lock"),',
+'        sub=document.getElementById("sub"), foot=document.getElementById("foot");',
+'    sub.textContent=T.sub; pw.placeholder=T.ph; go.textContent=T.btn; foot.textContent=T.foot;',
+'    f.addEventListener("submit", async function (e) {',
+'      e.preventDefault(); err.textContent=""; go.disabled=true; go.textContent=T.unlocking;',
+'      try {',
+'        var html=await unlock(pw.value);',
+'        var frame=document.createElement("iframe");',
+'        frame.setAttribute("sandbox","allow-scripts allow-popups allow-forms allow-modals");',
+'        frame.srcdoc=html;',
+'        document.body.innerHTML=""; document.body.appendChild(frame);',
+'      } catch (ex) {',
+'        go.disabled=false; go.textContent=T.btn;',
+'        err.textContent=T.wrong;',
+'        lock.classList.remove("shake"); void lock.offsetWidth; lock.classList.add("shake");',
+'        pw.select();',
+'      }',
+'    });',
+'  })();',
+'  <\/script>',
+'</body>',
+'</html>'
+  ].join("\n");
+
+  function escapeAttr(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function buildLocked(lang, title, payload) {
+    var i18n = JSON.stringify(I18N[lang] || I18N.en);
+    return TEMPLATE
+      .replace(/__LANG__/g, lang)
+      .replace(/__DIR__/g, lang === "ar" ? "rtl" : "ltr")
+      .replace(/__TITLE__/g, escapeAttr(title))
+      .replace("__I18N__", function () { return i18n; })
+      .replace("__PAYLOAD__", function () { return payload; });
+  }
+
+  async function encrypt(plaintext, password) {
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var base = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+    var key = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: salt, iterations: ITER, hash: "SHA-256" },
+      base, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+    var ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, enc.encode(plaintext)));
+    return JSON.stringify({ v: 1, iter: ITER, salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(ct) });
+  }
+
+  function initForge(root, lang) {
+    if (!root) return;
+    var S = STR[lang] || STR.en;
+    var secretEl = root.querySelector(".f-secret");
+    var titleEl = root.querySelector(".f-title");
+    var pwEl = root.querySelector(".f-pw");
+    var buildBtn = root.querySelector(".f-build");
+    var statusEl = root.querySelector(".f-status");
+    var outWrap = root.querySelector(".f-outwrap");
+    var dlBtn = root.querySelector(".f-download");
+    var copyBtn = root.querySelector(".f-copy");
+    var previewBtn = root.querySelector(".f-preview");
+    var tplView = root.querySelector(".f-tpl");
+    if (tplView) tplView.textContent = TEMPLATE;
+    var builtHTML = null;
+
+    function setStatus(msg, cls) { statusEl.textContent = msg; statusEl.className = "status f-status" + (cls ? " " + cls : ""); }
+
+    buildBtn.addEventListener("click", async function () {
+      var secret = secretEl.value;
+      var pw = pwEl.value;
+      var title = (titleEl.value || "").trim() || S.defTitle;
+      if (!secret) { setStatus(S.needContent, "err"); return; }
+      if (!pw) { setStatus(S.needPw, "err"); return; }
+      if (!window.crypto || !crypto.subtle) { setStatus(S.noCrypto, "err"); return; }
+      setStatus(S.encrypting);
+      try {
+        var payload = await encrypt(secret, pw);
+        builtHTML = buildLocked(lang, title, payload);
+        outWrap.hidden = false;
+        setStatus(S.done(Math.round(builtHTML.length / 1024)), "ok");
+      } catch (ex) {
+        setStatus(S.fail(ex.message), "err");
+      }
+    });
+
+    dlBtn.addEventListener("click", function () {
+      if (!builtHTML) return;
+      var blob = new Blob([builtHTML], { type: "text/html" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = "protected.html";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    });
+
+    copyBtn.addEventListener("click", async function () {
+      if (!builtHTML) return;
+      try { await navigator.clipboard.writeText(builtHTML); setStatus(S.copied, "ok"); }
+      catch (ex) { setStatus(S.clip, "err"); }
+    });
+
+    previewBtn.addEventListener("click", function () {
+      if (!builtHTML) return;
+      var w = window.open();
+      if (w) { w.document.open(); w.document.write(builtHTML); w.document.close(); }
+      else { setStatus(S.popup, "err"); }
+    });
+  }
+
+  initForge(document.getElementById("en"), "en");
+  initForge(document.getElementById("ar"), "ar");
+
+  // Highlight the static prose snippets (curl + the locked-page template that
+  // each forge just dropped into its .f-tpl block). The generated locked page
+  // itself stays dependency-free — this runs only on the blog.
+  if (window.hljs) {
+    document.querySelectorAll("pre code.language-bash, pre code.language-html").forEach(function (el) {
+      try { hljs.highlightElement(el); } catch (e) {}
+    });
+  }
+})();
+</script>
+</div>
