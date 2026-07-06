@@ -1,0 +1,43 @@
+<% set_meta_tags title: t("users.new.title"), noindex: true %>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-14">
+  <p class="inline-block w-fit -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+    <%= t("users.new.eyebrow") %>
+  </p>
+  <h1 class="mt-5 font-display text-5xl text-balance text-ink text-kapow sm:text-6xl"><%= t("users.new.heading") %></h1>
+
+  <% if @user.errors.any? %>
+    <div data-controller="error-summary" tabindex="-1" role="alert" class="mt-6 rounded-lg border-3 border-ink bg-white p-4 text-base text-hero-red shadow-comic-sm sm:text-sm">
+      <p class="font-semibold"><%= t("users.form.errors") %></p>
+      <ul class="mt-2 list-disc ps-5">
+        <% @user.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <%= form_with model: @user, class: "mt-8 grid gap-5 rounded-lg border-3 border-ink bg-white p-5 shadow-comic" do |form| %>
+    <div>
+      <%= form.label :email_address, t("users.form.email"), class: "font-display text-2xl tracking-wide text-ink" %>
+      <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "email", maxlength: 255, dir: "ltr",
+            class: "mt-2 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+    </div>
+    <div>
+      <%= form.label :password, t("users.form.password"), class: "font-display text-2xl tracking-wide text-ink" %>
+      <%= form.password_field :password, required: true, autocomplete: "new-password", maxlength: User::MAX_PASSWORD_BYTES,
+            class: "mt-2 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+    </div>
+    <div>
+      <%= form.label :password_confirmation, t("users.form.password_confirmation"), class: "font-display text-2xl tracking-wide text-ink" %>
+      <%= form.password_field :password_confirmation, required: true, autocomplete: "new-password", maxlength: User::MAX_PASSWORD_BYTES,
+            class: "mt-2 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+    </div>
+    <%= form.submit t("users.new.submit"),
+          class: "rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90 t-press" %>
+  <% end %>
+
+  <p class="mt-5 text-center text-base text-ink/70 sm:text-sm">
+    <%= t("users.new.sign_in_html", link: link_to(t("layout.sign_in"), new_session_path, class: "font-semibold text-hero-blue underline decoration-2 underline-offset-4")) %>
+  </p>
+</div>

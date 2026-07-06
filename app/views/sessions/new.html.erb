@@ -1,0 +1,27 @@
+<% set_meta_tags title: t("sessions.new.title"), noindex: true %>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-14">
+  <p class="inline-block w-fit -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+    <%= t("sessions.new.eyebrow") %>
+  </p>
+  <h1 class="mt-5 font-display text-5xl text-balance text-ink text-kapow sm:text-6xl"><%= t("sessions.new.heading") %></h1>
+
+  <%= form_with url: session_path, class: "mt-8 grid gap-5 rounded-lg border-3 border-ink bg-white p-5 shadow-comic" do |form| %>
+    <div>
+      <%= form.label :email_address, t("users.form.email"), class: "font-display text-2xl tracking-wide text-ink" %>
+      <%= form.email_field :email_address, value: params[:email_address], required: true, autofocus: true, autocomplete: "email", maxlength: 255, dir: "ltr",
+            class: "mt-2 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+    </div>
+    <div>
+      <%= form.label :password, t("users.form.password"), class: "font-display text-2xl tracking-wide text-ink" %>
+      <%= form.password_field :password, required: true, autocomplete: "current-password", maxlength: User::MAX_PASSWORD_BYTES,
+            class: "mt-2 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+    </div>
+    <%= form.submit t("sessions.new.submit"),
+          class: "rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90 t-press" %>
+  <% end %>
+
+  <p class="mt-5 text-center text-base text-ink/70 sm:text-sm">
+    <%= t("sessions.new.sign_up_html", link: link_to(t("layout.sign_up"), new_user_path, class: "font-semibold text-hero-blue underline decoration-2 underline-offset-4")) %>
+  </p>
+</div>
