@@ -2,9 +2,10 @@
 <!--
   pastehtml.dev — blog-post template
   ==================================
-  A self-contained, bilingual (English/LTR + Arabic/RTL) HTML page that matches
-  the comic-book design of the published posts (making-of, lock-it-up,
-  mark-it-down). Drop in your content and publish it as an ordinary paste.
+  A self-contained, bilingual (English/LTR + Arabic/RTL) HTML page in the
+  comic-book design of the project's guides (making-of, lock-it-up, mark-it-down,
+  which now live as app pages at /<slug>). Drop in your content and publish it as
+  an ordinary paste.
 
   WHAT TO EDIT (search for  >>>  markers):
     1. The <html> data-* attributes: a unique slug + the EN/AR page titles.
@@ -24,7 +25,8 @@
     curl -F "file=@my-post.html" https://pastehtml.dev/api/pastes
     # Save the returned update_token to revise the post later (PATCH).
   VANITY SUBDOMAIN (optional, e.g. my-post.pastehtml.dev):
-    add the slug to `vanity_hosts` in config/routes.rb.
+    publish with a `custom_subdomain` (that field needs an account API key);
+    reserved slugs are refused.
 -->
 <html lang="en"
       data-lang-key="pastehtml-SLUG-lang"

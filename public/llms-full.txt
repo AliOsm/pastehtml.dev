@@ -135,15 +135,15 @@ for arbitrary markup.
 
 ## Worked guides (live, self-contained pages)
 
-Read each guide's `/raw` source to reproduce its technique, then publish the
-result through the API — or just share the guide link with the user.
+Read each guide to reproduce its technique, then publish the result through the
+API — or just share the guide link with the user.
 
 - Password-protected / client-side-encrypted page:
-  https://lock-it-up.pastehtml.dev/ (source: https://pastehtml.dev/p/lock-it-up/raw)
+  https://pastehtml.dev/lock-it-up
 - Markdown → styled HTML page (no-server, in-browser build with live preview):
-  https://mark-it-down.pastehtml.dev/ (source: https://pastehtml.dev/p/mark-it-down/raw)
+  https://pastehtml.dev/mark-it-down
 - How this site was built by a human + an AI in a day:
-  https://making-of.pastehtml.dev/ (source: https://pastehtml.dev/p/making-of/raw)
+  https://pastehtml.dev/making-of
 
 ## Agent etiquette
 

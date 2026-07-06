@@ -158,20 +158,20 @@ pastes require the password gate before raw, render, markdown, or live content i
 
 Two published guides cover variations that need a specific technique. Each is a
 live, self-contained page that walks through it end to end and ships an
-in-browser tool. Read the guide's source (its /raw URL) to reproduce the
-approach, build the resulting HTML, and publish it through the API above -- or
-just share the guide link with the user.
+in-browser tool. Read the guide to reproduce the approach, build the resulting
+HTML, and publish it through the API above -- or just share the guide link with
+the user.
 
 - Password-protected / encrypted ("safe") HTML page -- the user wants a page
   only someone with the password can open, encrypted in the browser so
   pastehtml.dev only ever stores ciphertext:
-  https://lock-it-up.pastehtml.dev/  (source: https://pastehtml.dev/p/lock-it-up/raw)
+  https://pastehtml.dev/lock-it-up
 
 - Publish a Markdown (.md) file as a rendered HTML page -- the user hands you
   Markdown and wants a styled, self-contained page. Simplest path is to just
   upload the .md (see "Publish Markdown" above); this guide is the no-server
   alternative that builds the page in the browser and adds a live preview:
-  https://mark-it-down.pastehtml.dev/  (source: https://pastehtml.dev/p/mark-it-down/raw)
+  https://pastehtml.dev/mark-it-down
 
 ## Rules
 
