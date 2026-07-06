@@ -183,7 +183,22 @@
 <!-- ===================== ENGLISH ===================== -->
 <div class="wrap" id="en" data-lang="en"<%= " hidden" if I18n.locale == :ar %>>
 
-<h1 class="bangers">Mark It Down</h1>
+<header>
+  <svg class="burst" viewBox="0 0 120 120" aria-hidden="true">
+    <polygon fill="#e62429" stroke="#18120e" stroke-width="3"
+      points="60,4 71,26 93,13 91,38 116,37 99,55 120,68 96,74 105,98 81,90 78,115 60,96 42,115 39,90 15,98 24,74 0,68 21,55 4,37 29,38 27,13 49,26"/>
+    <text text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" fill="#fff" transform="rotate(-8 60 60)"><tspan x="60" y="66">.md</tspan></text>
+  </svg>
+  <h1 class="bangers">Mark It Down</h1>
+  <p class="sub">Got a README, a spec, or release notes in Markdown? Turn it into one good-looking,
+     self-contained HTML page — syntax highlighting and all — and share it as a link in seconds.</p>
+  <div class="badge-row">
+    <span class="chip">marked.js</span>
+    <span class="chip">DOMPurify</span>
+    <span class="chip">highlight.js</span>
+    <span class="chip">One HTML file</span>
+  </div>
+</header>
 
 <p class="lede">pastehtml.dev publishes one thing: a single HTML file. Markdown is not HTML — so to share a
 <code>.md</code> we wrap it in a thin HTML shell that <strong>renders the Markdown in the reader's browser</strong>.
@@ -306,7 +321,22 @@ in the preview above and in every page you build:</p>
 <!-- ===================== ARABIC ===================== -->
 <div class="wrap" id="ar" data-lang="ar" dir="rtl"<%= " hidden" unless I18n.locale == :ar %>>
 
-<h1 class="bangers" dir="rtl">انشُر ماركداونك صفحةً</h1>
+<header>
+  <svg class="burst" viewBox="0 0 120 120" aria-hidden="true">
+    <polygon fill="#e62429" stroke="#18120e" stroke-width="3"
+      points="60,4 71,26 93,13 91,38 116,37 99,55 120,68 96,74 105,98 81,90 78,115 60,96 42,115 39,90 15,98 24,74 0,68 21,55 4,37 29,38 27,13 49,26"/>
+    <text text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="22" fill="#fff" transform="rotate(-8 60 60)"><tspan x="60" y="66">.md</tspan></text>
+  </svg>
+  <h1 class="bangers">ماركداون بأناقة</h1>
+  <p class="sub">عندك ملفّ README أو مواصفات أو ملاحظات إصدارٍ بصيغة Markdown؟ حوِّله إلى صفحة HTML واحدة
+     أنيقة ومكتفية ذاتيًّا — مع إبراز الشيفرة وما إلى ذلك — وشاركها رابطًا في ثوانٍ.</p>
+  <div class="badge-row">
+    <span class="chip" dir="ltr">marked.js</span>
+    <span class="chip" dir="ltr">DOMPurify</span>
+    <span class="chip" dir="ltr">highlight.js</span>
+    <span class="chip">ملفّ HTML واحد</span>
+  </div>
+</header>
 
 <p class="lede">ينشر <bdi dir="ltr">pastehtml.dev</bdi> شيئًا واحدًا: ملفّ HTML واحدًا. وماركداون ليس HTML —
 لذا لمشاركة ملفّ <code>.md</code> نلفّه بقشرة HTML رفيعة <strong>تُصيِّر الماركداون داخل متصفّح

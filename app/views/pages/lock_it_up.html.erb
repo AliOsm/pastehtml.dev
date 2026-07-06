@@ -163,7 +163,23 @@
 <!-- ===================== ENGLISH ===================== -->
 <div class="wrap" id="en" data-lang="en"<%= " hidden" if I18n.locale == :ar %>>
 
-<h1 class="bangers">Lock It Up</h1>
+<header>
+  <svg class="burst" viewBox="0 0 120 120" aria-hidden="true">
+    <polygon fill="#e62429" stroke="#18120e" stroke-width="3"
+      points="60,4 71,26 93,13 91,38 116,37 99,55 120,68 96,74 105,98 81,90 78,115 60,96 42,115 39,90 15,98 24,74 0,68 21,55 4,37 29,38 27,13 49,26"/>
+    <text text-anchor="middle" font-family="Bangers, Impact, sans-serif" font-size="20" fill="#fff" transform="rotate(-8 60 60)"><tspan x="60" y="56">Top</tspan><tspan x="60" y="76">secret!</tspan></text>
+  </svg>
+  <h1 class="bangers">Lock It Up</h1>
+  <p class="sub">Publish a page only the people with the password can read. The secret is encrypted
+     <em>in your browser</em> before it ever leaves your machine — pastehtml.dev stores nothing but
+     scrambled bytes.</p>
+  <div class="badge-row">
+    <span class="chip">End-to-end</span>
+    <span class="chip">AES-256-GCM</span>
+    <span class="chip">Web Crypto API</span>
+    <span class="chip">Zero dependencies</span>
+  </div>
+</header>
 
 <p class="lede">Every paste on pastehtml.dev is served from its own isolated origin — a real
 <code>https://&lt;token&gt;.pastehtml.dev/</code> page where your scripts actually run. That one fact is
@@ -269,7 +285,22 @@ AES-GCM's authentication tag rejects it and the unlock screen shakes — no plai
 <!-- ===================== ARABIC ===================== -->
 <div class="wrap" id="ar" data-lang="ar" dir="rtl"<%= " hidden" unless I18n.locale == :ar %>>
 
-<h1 class="bangers" dir="rtl">أَقفِلها بإحكام</h1>
+<header>
+  <svg class="burst" viewBox="0 0 120 120" aria-hidden="true">
+    <polygon fill="#e62429" stroke="#18120e" stroke-width="3"
+      points="60,4 71,26 93,13 91,38 116,37 99,55 120,68 96,74 105,98 81,90 78,115 60,96 42,115 39,90 15,98 24,74 0,68 21,55 4,37 29,38 27,13 49,26"/>
+    <text text-anchor="middle" font-family="Lalezar, Impact, sans-serif" font-size="19" fill="#fff" transform="rotate(-8 60 60)"><tspan x="60" y="58">سرّي</tspan><tspan x="60" y="80">للغاية</tspan></text>
+  </svg>
+  <h1 class="bangers">أقفِلها بإحكام</h1>
+  <p class="sub">انشُر صفحةً لا يقرؤها إلا من يملك كلمة المرور. يُشفَّر السرّ <em>داخل متصفِّحك</em> قبل أن
+     يغادر جهازك أصلًا — فلا يُخزِّن <bdi dir="ltr">pastehtml.dev</bdi> سوى بايتاتٍ مُبعثَرة.</p>
+  <div class="badge-row">
+    <span class="chip">تشفير من الطرف إلى الطرف</span>
+    <span class="chip" dir="ltr">AES-256-GCM</span>
+    <span class="chip">واجهة Web Crypto</span>
+    <span class="chip">بلا أيّ اعتماديات</span>
+  </div>
+</header>
 
 <p class="lede">لكلّ صفحة على <bdi dir="ltr">pastehtml.dev</bdi> أصلٌ مستقلٌّ خاصٌّ بها — صفحةٌ
 حقيقيّة على العنوان <code>https://&lt;token&gt;.pastehtml.dev/</code> تعمل فيها سكربتاتك فعليًّا. هذه الحقيقة
