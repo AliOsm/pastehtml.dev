@@ -16,12 +16,21 @@
     </p>
   </div>
   <h1 class="mt-5 font-display text-4xl text-balance text-ink text-kapow sm:text-6xl md:text-7xl"><%= t("show.live_title") %></h1>
-  <p class="mt-4 text-base text-ink/70 sm:text-sm">
+  <p class="mt-4 text-base text-pretty text-ink/70 sm:text-sm">
     <% if @paste.title.present? %>
-      <span class="font-semibold text-ink"><%= @paste.title %></span> ·
+      <span class="font-semibold break-words text-ink"><%= @paste.title %></span> ·
     <% end %>
-    <span class="font-mono font-medium text-ink" dir="ltr"><%= @paste.original_filename %></span>
+    <span class="font-mono font-medium break-all text-ink" dir="ltr"><%= @paste.original_filename %></span>
     · <%= number_to_human_size(@paste.content.bytesize) %>
+    · <%= t("show.meta.views", count: @paste.views_count) %>
+    <%# The folder is the owner's private dashboard label, so it's shown only to
+        the owner -- never leaked on the public inspector. %>
+    <% if @paste.folder.present? && @paste.owned_by?(current_user) %>
+      · <%= t("show.meta.folder", folder: @paste.folder.name) %>
+    <% end %>
+    <% if @paste.password_protected? %>
+      · <%= t("show.meta.password_protected") %>
+    <% end %>
     · <%= t("show.meta.published", date: l(@paste.created_at.to_date, format: :long)) %>
     <% if @paste.updated? %>
       · <%= t("show.meta.updated", date: l(@paste.updated_at.to_date, format: :long)) %>
@@ -35,7 +44,7 @@
     <div class="mt-2 flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
       <input id="share-link" name="share_link" type="url" readonly dir="ltr" value="<%= paste_live_url(@paste) %>"
              data-clipboard-target="source" data-action="focus->clipboard#select"
-             class="w-full min-w-0 flex-1 rounded-md border-2 border-ink bg-paper px-3 py-2 font-mono text-sm text-ink focus:outline-3 focus:-outline-offset-1 focus:outline-hero-blue max-sm:text-base">
+             class="w-full min-w-0 flex-1 rounded-md border-2 border-ink bg-paper px-3 py-2 font-mono text-sm text-ink max-sm:text-base">
       <button type="button" data-action="clipboard#copy"
               class="flex shrink-0 items-center justify-center rounded-md border-2 border-ink bg-hero-red px-3 py-2.5 font-display text-xl tracking-wide text-white shadow-comic-sm transition-transform duration-100 hover:bg-hero-red/90 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue active:translate-x-1 active:translate-y-1 active:shadow-none sm:py-2 sm:text-lg">
         <span class="t-icon-swap" data-state="a" data-clipboard-target="swap">
@@ -61,19 +70,23 @@
       <% end %>
       <%= link_to t("show.share.publish_another"), root_path,
             class: "text-base font-semibold text-hero-blue underline decoration-2 underline-offset-4 hover:text-ink sm:text-sm" %>
+      <% if @paste.owned_by?(current_user) %>
+        <%= link_to t("show.share.edit"), edit_owned_paste_path(@paste),
+              class: "text-base font-semibold text-hero-blue underline decoration-2 underline-offset-4 hover:text-ink sm:text-sm" %>
+      <% end %>
     </div>
   </section>
 
   <section class="mt-10" data-controller="tabs">
     <div role="tablist" aria-label="<%= t("show.tabs.aria") %>" class="inline-flex gap-1.5 rounded-lg border-2 border-ink bg-white p-1.5 shadow-comic-sm">
-      <button type="button" role="tab" id="tab-preview" aria-selected="true" aria-controls="panel-preview"
-              data-tabs-target="tab" data-action="tabs#select" data-tabs-panel-param="preview"
-              class="rounded-md border-2 border-transparent px-3 py-1.5 font-display text-xl tracking-wide text-ink/50 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue aria-selected:border-ink aria-selected:bg-hero-yellow aria-selected:text-ink sm:py-1 sm:text-lg">
+      <button type="button" role="tab" id="tab-preview" aria-selected="true" aria-controls="panel-preview" tabindex="0"
+              data-tabs-target="tab" data-action="tabs#select keydown->tabs#navigate" data-tabs-panel-param="preview"
+              class="rounded-md border-2 border-transparent px-3 py-1.5 font-display text-xl tracking-wide text-ink/70 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue aria-selected:border-ink aria-selected:bg-hero-yellow aria-selected:text-ink sm:py-1 sm:text-lg">
         <%= t("show.tabs.preview") %>
       </button>
-      <button type="button" role="tab" id="tab-source" aria-selected="false" aria-controls="panel-source"
-              data-tabs-target="tab" data-action="tabs#select" data-tabs-panel-param="source"
-              class="rounded-md border-2 border-transparent px-3 py-1.5 font-display text-xl tracking-wide text-ink/50 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue aria-selected:border-ink aria-selected:bg-hero-yellow aria-selected:text-ink sm:py-1 sm:text-lg">
+      <button type="button" role="tab" id="tab-source" aria-selected="false" aria-controls="panel-source" tabindex="-1"
+              data-tabs-target="tab" data-action="tabs#select keydown->tabs#navigate" data-tabs-panel-param="source"
+              class="rounded-md border-2 border-transparent px-3 py-1.5 font-display text-xl tracking-wide text-ink/70 hover:text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-hero-blue aria-selected:border-ink aria-selected:bg-hero-yellow aria-selected:text-ink sm:py-1 sm:text-lg">
         <%= t("show.tabs.source") %>
       </button>
     </div>
@@ -113,7 +126,7 @@
             <%# Cross-origin by design: the paste's own origin is the sandbox.
                 Scripts and (partitioned) localStorage work, but the frame can
                 never touch pastehtml.dev. %>
-            <iframe src="<%= paste_live_url(@paste) %>"
+            <iframe src="<%= paste_preview_url(@paste) %>"
                     title="<%= t("show.preview.iframe_title", filename: @paste.original_filename) %>"
                     loading="lazy"
                     class="h-[65vh] w-full bg-white group-data-fullscreen:h-auto group-data-fullscreen:flex-1"></iframe>

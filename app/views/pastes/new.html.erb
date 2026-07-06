@@ -10,17 +10,19 @@
   (multipart "file" or raw text/html body). The 201 response contains the
   document's `live_url` (always show it to your user) and an `update_token`
   revealed only in that response (save it; PATCH /api/pastes/<token> with it
-  as a Bearer token updates the paste in place, as many times as you like).
+  as a Bearer token updates the paste in place for as long as it stays anonymous).
+  Signed-in users can also create account API keys at /api_keys; with one,
+  publish using Authorization: Bearer pht_... and pass folder_name or folder_id
+  to save the paste into that user's folder.
 -->
 
-
-<div class="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-6 py-14">
+<div class="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-6 py-14">
   <div class="text-center">
     <p class="mx-auto inline-block -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
       <%= t("home.eyebrow") %>
     </p>
     <h1 class="mx-auto mt-6 max-w-[20ch] font-display text-6xl text-balance text-ink text-kapow sm:text-7xl md:text-8xl"><%= t("home.hero_html") %></h1>
-    <p class="mx-auto mt-5 max-w-[48ch] text-lg text-pretty text-ink/70">
+    <p class="mx-auto mt-5 max-w-[54ch] text-lg text-pretty text-ink/70">
       <%= t("home.subtitle") %>
     </p>
   </div>
@@ -31,8 +33,10 @@
                 dropzone_not_html_file_value: t("dropzone_errors.not_html_file"),
                 dropzone_empty_value: t("dropzone_errors.empty"),
                 dropzone_too_large_value: t("dropzone_errors.too_large"),
-                dropzone_not_html_clipboard_value: t("dropzone_errors.not_html_clipboard") },
-        class: "group relative mt-12" do |form| %>
+                dropzone_not_html_clipboard_value: t("dropzone_errors.not_html_clipboard"),
+                dropzone_auto_submit_value: !authenticated?,
+                dropzone_selected_value: t("home.dropzone.selected") },
+        class: "group relative mt-12 grid gap-6" do |form| %>
     <span aria-hidden="true" class="absolute -top-6 -right-2 z-10 rotate-12 sm:-top-7 sm:-right-7">
       <svg viewBox="0 0 120 120" class="size-20 drop-shadow-[3px_3px_0_var(--color-ink)] sm:size-24">
         <polygon fill="var(--color-hero-red)" stroke="var(--color-ink)" stroke-width="3"
@@ -46,7 +50,7 @@
       <button type="button"
               data-dropzone-target="zone"
               data-action="click->dropzone#browse dragover->dropzone#dragOver dragleave->dropzone#dragLeave drop->dropzone#drop"
-              class="t-input <%= "is-error" if flash[:alert] %> relative flex w-full cursor-pointer flex-col items-center gap-4 overflow-hidden rounded-lg border-3 border-ink bg-white p-8 shadow-comic hover:bg-hero-yellow/15 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-hero-blue data-dragging:bg-hero-yellow group-data-busy:pointer-events-none sm:p-16">
+              class="t-input <%= "is-error" if flash[:alert] %> relative flex w-full cursor-pointer flex-col items-center gap-4 overflow-hidden rounded-lg border-3 border-ink bg-white p-8 shadow-comic hover:bg-hero-yellow/15 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-hero-blue data-dragging:bg-hero-yellow group-data-busy:pointer-events-none sm:p-14">
         <span aria-hidden="true" class="bg-halftone pointer-events-none absolute -top-6 -left-6 size-32 text-hero-blue/25"></span>
         <span aria-hidden="true" class="bg-halftone pointer-events-none absolute -right-6 -bottom-6 size-32 text-hero-red/20"></span>
 
@@ -56,11 +60,11 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
             </svg>
           </span>
-          <span class="font-display text-2xl tracking-wide text-balance text-ink sm:text-3xl"><%= t("home.dropzone.heading") %></span>
-          <span class="text-base text-ink/70 sm:text-sm"><%= t("home.dropzone.browse_html",
+          <span data-dropzone-target="heading" class="font-display text-2xl tracking-wide text-balance text-ink sm:text-3xl"><%= t("home.dropzone.heading") %></span>
+          <span data-dropzone-target="hint" class="text-base text-ink/70 sm:text-sm"><%= t("home.dropzone.browse_html",
                 browse: tag.span(t("home.dropzone.browse"), class: "font-semibold text-hero-blue underline decoration-2 underline-offset-4"),
                 paste: tag.kbd("⌘V", class: "rounded border border-ink/30 bg-paper px-1 font-mono text-xs", dir: "ltr")) %></span>
-          <span class="font-mono text-xs text-ink/50"><%= t("home.dropzone.constraints_html",
+          <span class="font-mono text-xs text-ink/70"><%= t("home.dropzone.constraints_html",
                 html: tag.bdi(".html", dir: "ltr"), htm: tag.bdi(".htm", dir: "ltr"), md: tag.bdi(".md", dir: "ltr"), size: tag.bdi("2 MB", dir: "ltr")) %></span>
         </span>
 
@@ -80,6 +84,48 @@
     <%= form.file_field :file, accept: ".html,.htm,.md,.markdown,text/html,text/markdown", class: "sr-only", tabindex: -1,
           aria: { label: t("home.dropzone.choose_file") },
           data: { dropzone_target: "input", action: "change->dropzone#fileSelected" } %>
+
+    <% if authenticated? %>
+      <section class="rounded-lg border-3 border-ink bg-white p-5 shadow-comic-sm">
+        <h2 class="font-display text-3xl tracking-wide text-ink sm:text-2xl"><%= t("home.options.title") %></h2>
+        <p class="mt-1 text-base text-ink/70 sm:text-sm"><%= t("home.options.body") %></p>
+
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          <div>
+            <%= label_tag :custom_subdomain, t("pastes.form.custom_subdomain"), class: "font-display text-xl tracking-wide text-ink" %>
+            <div dir="ltr" class="mt-1 flex rounded-md border-2 border-ink bg-paper shadow-comic-sm focus-within:outline-3 focus-within:-outline-offset-1 focus-within:outline-hero-blue">
+              <%= text_field_tag :custom_subdomain, params[:custom_subdomain], placeholder: t("pastes.form.custom_subdomain_placeholder"), maxlength: 63, dir: "ltr",
+                    class: "min-w-0 flex-1 bg-transparent px-3 py-2 font-mono text-sm text-ink outline-none" %>
+              <span class="border-s-2 border-ink bg-white px-3 py-2 font-mono text-sm text-ink/60" dir="ltr">.<%= request.domain %></span>
+            </div>
+          </div>
+
+          <div>
+            <%= label_tag :password, t("pastes.form.password"), class: "font-display text-xl tracking-wide text-ink" %>
+            <%= password_field_tag :password, nil, autocomplete: "new-password", maxlength: Paste::MAX_PASSWORD_BYTES, placeholder: t("pastes.form.password_placeholder"),
+                  class: "mt-1 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+          </div>
+
+          <div class="md:col-span-2">
+            <%= label_tag :folder_id, t("pastes.form.folder"), class: "font-display text-xl tracking-wide text-ink" %>
+            <div class="mt-1 flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
+              <div class="relative w-full">
+                <%= select_tag :folder_id,
+                      options_from_collection_for_select(@folders, :id, :name, params[:folder_id]),
+                      include_blank: t("pastes.form.no_folder"),
+                      class: "w-full appearance-none rounded-md border-2 border-ink bg-paper px-3 py-2 pe-10 text-sm text-ink shadow-comic-sm" %>
+                <%= render "shared/select_chevron" %>
+              </div>
+              <%= link_to t("folders.new_link"), new_folder_path,
+                    class: "whitespace-nowrap rounded-md border-2 border-ink bg-hero-yellow px-3 py-2 font-display text-lg tracking-wide text-ink shadow-comic-sm hover:bg-white" %>
+            </div>
+          </div>
+        </div>
+
+        <%= form.submit t("pastes.form.publish"),
+              class: "mt-6 w-full rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic transition-transform duration-100 hover:bg-hero-red/90 active:translate-x-1 active:translate-y-1 active:shadow-none" %>
+      </section>
+    <% end %>
   <% end %>
 
   <ul role="list" class="mt-16 grid gap-6 sm:grid-cols-3">

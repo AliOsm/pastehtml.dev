@@ -15,9 +15,11 @@
 
     <%= yield :head %>
 
-    <%# PWA manifest for installable apps (routes are defined in config/routes.rb).
-        The manifest fetch carries no cookie, so non-default locales travel in the href. %>
-    <%= tag.link rel: "manifest", href: (I18n.locale == I18n.default_locale ? pwa_manifest_path : pwa_manifest_path(locale: I18n.locale)) %>
+    <% unless paste_origin_request? %>
+      <%# PWA manifest for installable apps (routes are defined in config/routes.rb).
+          The manifest fetch carries no cookie, so non-default locales travel in the href. %>
+      <%= tag.link rel: "manifest", href: (I18n.locale == I18n.default_locale ? pwa_manifest_path : pwa_manifest_path(locale: I18n.locale)) %>
+    <% end %>
 
     <link rel="icon" href="/icon.png" type="image/png">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -33,26 +35,52 @@
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Lalezar&display=swap">
     <% end %>
 
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
   </head>
 
-  <body class="bg-paper font-sans text-ink" data-controller="pwa">
+  <body class="bg-paper font-sans text-ink"<% unless paste_origin_request? %> data-controller="pwa"<% end %>>
     <div class="isolate flex min-h-dvh flex-col overflow-x-clip">
+      <a href="#main" class="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:start-3 focus-visible:top-3 focus-visible:z-50 focus-visible:rounded-md focus-visible:border-3 focus-visible:border-ink focus-visible:bg-white focus-visible:px-4 focus-visible:py-2 focus-visible:font-display focus-visible:text-ink focus-visible:shadow-comic-sm"><%= t("layout.skip_to_content") %></a>
       <header class="flex items-center justify-between gap-4 px-6 py-5 sm:px-10">
-        <a href="/" aria-label="<%= t("layout.homepage") %>" class="-rotate-1 border-3 border-ink bg-white px-3 py-1 font-display text-2xl tracking-wide shadow-comic-sm">
+        <a href="/" class="-rotate-1 border-3 border-ink bg-white px-3 py-1 font-display text-2xl tracking-wide shadow-comic-sm">
           pastehtml<span class="text-hero-red">.dev</span>
         </a>
-        <div class="flex items-center gap-3">
-          <p class="rotate-2 border-2 border-ink bg-hero-yellow px-2.5 py-1 font-display text-sm tracking-wide shadow-comic-sm max-sm:hidden">
-            <%= t("layout.no_signup") %>
-          </p>
+        <div class="flex flex-wrap items-center justify-end gap-3">
+          <nav aria-label="<%= t("layout.primary_nav") %>" class="flex flex-wrap items-center gap-3">
+          <% if authenticated? %>
+            <% dashboard_current = current_nav?(:dashboard) %>
+            <%= link_to t("layout.dashboard"), pastes_path,
+                  aria: { current: ("page" if dashboard_current) },
+                  class: "rotate-1 border-2 border-ink px-2.5 py-1 font-display text-sm tracking-wide shadow-comic-sm #{dashboard_current ? "bg-ink text-paper" : "bg-hero-yellow text-ink hover:bg-white"}" %>
+            <% api_keys_current = current_nav?(:api_keys) %>
+            <%= link_to t("layout.api_keys"), api_keys_path,
+                  aria: { current: ("page" if api_keys_current) },
+                  class: "-rotate-1 border-2 border-ink px-2.5 py-1 font-display text-sm tracking-wide shadow-comic-sm #{api_keys_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" %>
+            <%= button_to t("layout.sign_out"), session_path, method: :delete,
+                  class: "border-2 border-ink bg-white px-2.5 py-1 font-display text-sm tracking-wide text-ink shadow-comic-sm hover:bg-hero-yellow" %>
+          <% else %>
+            <% sign_in_current = current_nav?(:sign_in) %>
+            <%= link_to t("layout.sign_in"), new_session_path,
+                  aria: { current: ("page" if sign_in_current) },
+                  class: "rotate-2 border-2 border-ink px-2.5 py-1 font-display text-sm tracking-wide shadow-comic-sm #{sign_in_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" %>
+            <% sign_up_current = current_nav?(:sign_up) %>
+            <%= link_to t("layout.sign_up"), new_user_path,
+                  aria: { current: ("page" if sign_up_current) },
+                  class: "-rotate-1 border-2 border-ink px-2.5 py-1 font-display text-sm tracking-wide shadow-comic-sm #{sign_up_current ? "bg-ink text-paper" : "bg-hero-yellow text-ink hover:bg-white"}" %>
+          <% end %>
+          </nav>
           <%= locale_toggle %>
         </div>
       </header>
 
-      <main class="flex flex-1 flex-col">
+      <main id="main" class="flex flex-1 flex-col">
+        <% flash.each do |type, message| %>
+          <% next if message.blank? %>
+          <div class="mx-auto mt-2 w-[calc(100%-3rem)] max-w-4xl rounded-lg border-3 border-ink <%= type.to_s == "notice" ? "bg-hero-yellow" : "bg-white" %> px-4 py-3 text-base font-semibold text-ink shadow-comic-sm sm:text-sm" role="<%= type.to_s == "notice" ? "status" : "alert" %>">
+            <%= message %>
+          </div>
+        <% end %>
         <%= yield %>
       </main>
 

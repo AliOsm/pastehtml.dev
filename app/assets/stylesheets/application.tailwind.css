@@ -59,6 +59,38 @@
   color: var(--color-ink);
 }
 
+/* No 300ms tap-delay on interactive controls (also prevents double-tap zoom). */
+a, button, select, summary, [role="button"], input[type="submit"] {
+  touch-action: manipulation;
+}
+
+/* One consistent comic focus ring on text fields and selects, replacing the
+   generic browser-default outline. In @layer base so an explicit `outline-none`
+   utility still wins -- e.g. the subdomain composite opts its inner field out and
+   rings its wrapper instead. Checkboxes/radios keep their own (outset) ring. */
+@layer base {
+  input:not([type="checkbox"], [type="radio"]):focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid var(--color-hero-blue);
+    outline-offset: -1px;
+  }
+}
+
+/* Tactile "press into the shadow" for comic action buttons: on press the button
+   nudges toward its offset shadow and the shadow drops, so it reads as pushed in.
+   Pair with a shadow-comic* utility. */
+.t-press {
+  transition: transform 120ms ease-out;
+}
+.t-press:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .t-press { transition: none; }
+}
+
 /* Arabic script is cursive: any letter-spacing severs the joins between
    letters. In RTL we neutralize every `tracking-*` utility and the display
    letter-spacing so Arabic words stay connected and legible. (Unlayered, so it
@@ -254,8 +286,6 @@
 }
 .t-input.is-error {
   border-color: var(--color-hero-red);
-}
-.t-input.is-error {
   transition: border-color var(--revert-dur, 280ms) ease-out;
 }
 

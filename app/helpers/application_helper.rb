@@ -39,6 +39,20 @@ module ApplicationHelper
     dir_for(I18n.locale)
   end
 
+  # Which top-level header nav item, if any, the current page belongs to. Keyed
+  # on controller/action (not current_page?) so folder pages count as the
+  # dashboard and a failed sign-in/up keeps its own form highlighted despite the
+  # ?email_address= query the redirect carries.
+  def current_nav?(section)
+    case section
+    when :dashboard then controller_name == "folders" || (controller_name == "pastes" && action_name == "index")
+    when :api_keys  then controller_name == "api_keys"
+    when :sign_in   then controller_name == "sessions" && action_name == "new"
+    when :sign_up   then controller_name == "users" && action_name == "new"
+    else false
+    end
+  end
+
   private
     def locale_segment(locale, first:)
       label = t("language_short", locale: locale)

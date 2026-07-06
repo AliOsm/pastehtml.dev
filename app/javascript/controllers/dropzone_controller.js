@@ -5,7 +5,7 @@ const MAX_BYTES = 2 * 1024 * 1024
 // Drives the upload drop zone: browsing, drag-and-drop, client-side
 // validation with an error shake, and the busy state while publishing.
 export default class extends Controller {
-  static targets = ["input", "zone", "wrap", "error"]
+  static targets = ["input", "zone", "wrap", "error", "heading", "hint"]
   // User-facing messages are translated server-side and handed in as values, so
   // the controller stays locale-agnostic.
   static values = {
@@ -13,6 +13,11 @@ export default class extends Controller {
     empty: String,
     tooLarge: String,
     notHtmlClipboard: String,
+    // Guests have no options to set, so a file selection publishes immediately.
+    // Signed-in users get to set a subdomain/password/folder first, so it only
+    // loads the file and shows the `selected` prompt until they hit Publish.
+    autoSubmit: Boolean,
+    selected: String,
   }
 
   connect() {
@@ -97,7 +102,18 @@ export default class extends Controller {
       this.inputTarget.files = transfer.files
     }
 
-    this.element.requestSubmit()
+    if (this.autoSubmitValue) {
+      this.element.requestSubmit()
+    } else {
+      this.reflectSelection(file)
+    }
+  }
+
+  // Signed-in users publish explicitly, so a selection just loads the file and
+  // swaps the prompt for the file name and a "set options, then Publish" hint.
+  reflectSelection(file) {
+    if (this.hasHeadingTarget) this.headingTarget.textContent = file.name
+    if (this.hasHintTarget) this.hintTarget.textContent = this.selectedValue
   }
 
   problemWith(file) {

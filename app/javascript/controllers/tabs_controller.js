@@ -15,7 +15,9 @@ export default class extends Controller {
 
   select({ params: { panel } }) {
     this.tabTargets.forEach(tab => {
-      tab.setAttribute("aria-selected", tab.dataset.tabsPanelParam === panel)
+      const active = tab.dataset.tabsPanelParam === panel
+      tab.setAttribute("aria-selected", active)
+      tab.tabIndex = active ? 0 : -1 // roving tabindex: only the selected tab is in the tab order
     })
     this.panelTargets.forEach(candidate => {
       if (candidate.dataset.panel === panel) {
@@ -25,6 +27,26 @@ export default class extends Controller {
         this.cleanUp(candidate)
       }
     })
+  }
+
+  // ArrowLeft/Right (direction-aware for RTL) and Home/End move selection and
+  // focus between tabs, as expected of an ARIA tablist.
+  navigate(event) {
+    const step = { ArrowRight: 1, ArrowLeft: -1, Home: "first", End: "last" }[event.key]
+    if (step === undefined) return
+    event.preventDefault()
+
+    const tabs = this.tabTargets
+    const rtl = getComputedStyle(this.element).direction === "rtl"
+    const current = Math.max(0, tabs.indexOf(event.target))
+    let index
+    if (step === "first") index = 0
+    else if (step === "last") index = tabs.length - 1
+    else index = (current + (rtl ? -step : step) + tabs.length) % tabs.length
+
+    const tab = tabs[index]
+    this.select({ params: { panel: tab.dataset.tabsPanelParam } })
+    tab.focus()
   }
 
   reveal(panel) {

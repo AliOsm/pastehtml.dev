@@ -10,6 +10,9 @@ application.register("clipboard", ClipboardController)
 import DropzoneController from "./dropzone_controller"
 application.register("dropzone", DropzoneController)
 
+import ErrorSummaryController from "./error_summary_controller"
+application.register("error-summary", ErrorSummaryController)
+
 import FullscreenController from "./fullscreen_controller"
 application.register("fullscreen", FullscreenController)
 

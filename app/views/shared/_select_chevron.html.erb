@@ -1,0 +1,8 @@
+<%# Comic chevron for appearance-none <select>s. Sits at the inline-end (flips
+    to the correct side in RTL) with room from the border, and lets clicks fall
+    through to the select. Pair with `appearance-none pe-10` on the select. %>
+<span aria-hidden="true" class="pointer-events-none absolute inset-y-0 end-3 flex items-center text-ink">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-4">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+</span>
