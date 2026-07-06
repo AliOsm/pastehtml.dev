@@ -1,1 +1,12 @@
-# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+# robots.txt for pastehtml.dev
+# https://www.robotstxt.org/robotstxt.html
+
+User-agent: *
+Allow: /
+
+# The API is for programmatic clients, not crawlers.
+Disallow: /api/
+
+# Building an AI agent or LLM integration? Start here:
+#   https://pastehtml.dev/llms.txt       — concise integration guide
+#   https://pastehtml.dev/llms-full.txt  — complete machine reference

@@ -1,7 +1,15 @@
 # pastehtml.dev
 
-Publish a single HTML file, get a private shareable link. No accounts, no keys.
-This file is the integration guide for AI agents. When a user says "publish
+> Publish a single self-contained HTML or Markdown file and get a private,
+> shareable link served on its own isolated origin. Anonymous publishing needs
+> no key; an account API key (prefix pht_) publishes into a user's dashboard and
+> folders. This is the agent integration guide; the complete machine reference
+> is at https://pastehtml.dev/llms-full.txt.
+
+Publish a single HTML file, get a private shareable link. Anonymous API
+publishing needs no account key. If the user gives you a pastehtml.dev account
+API key, you can publish into their account and target a folder. This file is
+the integration guide for AI agents. When a user says "publish
 this on pastehtml.dev" or "paste it at pastehtml.dev", follow this contract.
 
 ## Publish
@@ -22,6 +30,12 @@ Response 201:
     {
       "token": "...",         // the paste's public ID
       "title": "...",         // extracted from the document's <title>
+      "custom_subdomain": null, // or the claimed custom subdomain
+      "password_protected": false,
+      "views_count": 0,
+      "folder": null,       // or { "id": 123, "name": "Roadmap" }
+      "owner": null,        // or { "id": 123 } for account-owned pastes
+      "account_paste": false,
       "live_url": "https://<token>.pastehtml.dev/",  // the SHARE LINK: the
                               // document itself, on its own isolated origin
                               // (scripts and localStorage work there)
@@ -36,11 +50,54 @@ Response 201:
                               // converted to Markdown (text/markdown); a lossy,
                               // best-effort prose view, not the canonical bytes
       "update_token": "..."   // secret; revealed ONLY here, never recoverable.
-                              // It stays valid forever and works for every
-                              // future update -- updates do NOT rotate it.
+                              // Valid while the paste stays anonymous (a normal
+                              // update does NOT rotate it); claiming the paste
+                              // into an account retires it -- the account key
+                              // becomes the sole update credential.
     }
 
-422 with { "errors": [...] } when the content is invalid.
+422 with { "errors": [...] } when the content or options are invalid. Anonymous
+publishes may set password=<secret>; custom_subdomain=<letters-numbers-hyphens>
+requires an account API key (see below), so memorable origins can't be squatted
+anonymously. Account-key publishes return the same paste fields but omit
+update_token; use the account API key to update account-owned pastes.
+
+## Publish into a user account with an API key
+
+If the user provides an account API key, send it in a header:
+
+    Authorization: Bearer pht_...
+
+or:
+
+    X-PasteHTML-API-Key: pht_...
+
+Then POST /api/pastes normally. The paste is saved to the key owner's account
+and appears in their dashboard. Some keys may be scoped to a default folder;
+those keys always publish there, can update only pastes already in that folder,
+reject attempts to target a different folder, only list their scoped folder, and
+cannot create unrelated folders. To place an unscoped key's paste in a folder,
+pass exactly one of:
+
+    folder_name=Roadmap   # finds or creates that folder under the account
+    folder_id=123         # uses an existing folder owned by the account
+
+Missing or invalid keys return 401 when a folder is requested. Invalid/revoked
+keys are never silently treated as anonymous publishing.
+
+Discover folders for a key. Unscoped keys list every folder in the account;
+folder-scoped keys list only their scoped folder:
+
+    curl -H "Authorization: Bearer pht_..." https://pastehtml.dev/api/folders
+
+Create a folder explicitly with an unscoped key. Nested form params and a top-level
+`name` are both accepted; folder-scoped keys get 403 on creation:
+
+    curl -X POST -H "Authorization: Bearer pht_..." \
+      -d "folder[name]=Roadmap" https://pastehtml.dev/api/folders
+
+    curl -X POST -H "Authorization: Bearer pht_..." \
+      -d "name=Roadmap" https://pastehtml.dev/api/folders
 
 ## Publish Markdown
 
@@ -64,15 +121,28 @@ upload above if you need arbitrary markup.
 
 ## Update
 
-Only the holder of a paste's update_token can change it:
+A paste can be changed by its update_token, or by an account API key that owns it.
+Account-key creation does not reveal a new update_token, so keep using the
+account key for future revisions unless the user gave you a separate update_token:
 
     curl -X PATCH -H "Authorization: Bearer <update_token>" \
       --data-binary @plan.html -H "Content-Type: text/html" \
       https://pastehtml.dev/api/pastes/<token>
 
-Accepts the same two body forms as publishing. Responses: 200 with the
-refreshed { token, title, live_url, url, raw_url, render_url, markdown_url }, 403 for a wrong
-or missing update token, 404 for an unknown paste, 422 for invalid content.
+When Authorization is already used for an account API key and you also have an
+anonymous paste's update_token, send the paste secret as `X-Update-Token: ...`;
+that lets the agent claim the anonymous paste into the account and optionally
+move it with folder_name, folder_id, or clear_folder.
+
+Accepts the same two body forms as publishing plus custom_subdomain, password,
+clear_password=1 (remove password protection), folder_id, folder_name, and
+clear_folder=1 (move an owned paste back to All pastes). Responses: 200 with the
+refreshed { token, title, custom_subdomain, folder, owner, account_paste,
+password_protected, views_count, live_url, url, raw_url, render_url,
+markdown_url }, 403 for a wrong or missing update token or for an account API
+key that does not own the paste, 404 for an unknown paste, 422 for invalid
+content or options. An account API key can update pastes owned by that account;
+use clear_folder=1 to move an owned paste back to All pastes.
 
 ## Read a paste back
 
@@ -81,7 +151,8 @@ GET https://pastehtml.dev/p/<token>/raw
 Returns the paste's exact bytes as text/plain -- use this when you need to read
 back what was published (for example to diff before an update). The render_url
 and live_url variants serve the same content as text/html and can be rewritten
-by a CDN in transit, so prefer /raw for byte-exact reads. No auth required.
+by a CDN in transit, so prefer /raw for byte-exact reads. Password-protected
+pastes require the password gate before raw, render, markdown, or live content is served.
 
 ## Recipes for common requests
 
@@ -104,7 +175,7 @@ just share the guide link with the user.
 
 ## Rules
 
-- HTML only: .html or .htm, UTF-8, at most 2 MB.
+- HTML or Markdown: .html, .htm, .md, or .markdown, UTF-8, at most 2 MB.
 - Make the document self-contained: inline CSS/JS or load from CDNs.
   Give it a meaningful <title>; it becomes the paste's display title.
 - Each paste runs on its own origin (the live_url subdomain), fully
@@ -112,19 +183,24 @@ just share the guide link with the user.
   localStorage work there -- documents that track state (for example
   review-progress checklists) should persist via localStorage and tell
   readers to open the live_url.
-- Pastes can never be deleted, by anyone. Links are unguessable and
-  excluded from search engines, but anyone with the link can read the
-  page -- never publish secrets.
-- API rate limit: 20 requests per minute per IP.
+- Pastes can never be deleted, by anyone. Random links are unguessable and
+  excluded from search engines; optional paste passwords add a simple access
+  gate, but never publish secrets unless the document itself encrypts them.
+- API paste publish/update rate limit: 20 requests per minute and 1,000 per day per IP. Folder discovery/creation also requires an account API key and is rate limited.
+- Account API keys start with pht_. Treat them as passwords; never put them in
+  the published HTML, paste content, URLs, or user-visible final answer.
 
 ## Agent etiquette
 
 1. After publishing or updating, always show the user the `live_url` -- the
    document link is the whole point of the task. Mention `url` too when the
    user may want the source view.
-2. Save the `update_token` somewhere durable for the project (for example a
-   file like `.pastehtml/<token>.update-token`, or your task notes) so a later
-   "update that doc" request works. It cannot be recovered if lost.
-3. When asked to revise an already-published document, PATCH the existing
+2. If the user supplied an account API key, use it from your secret store or
+   the user's message only for the request. Do not reveal it back.
+3. If a response includes an `update_token`, save it somewhere durable for the
+   project (for example a file like `.pastehtml/<token>.update-token`, or your
+   task notes) so a later "update that doc" request works. Account-key publishes
+   may omit it; in that case use the account key for revisions.
+4. When asked to revise an already-published document, PATCH the existing
    paste instead of publishing a duplicate, so the user's shared link stays
    current.

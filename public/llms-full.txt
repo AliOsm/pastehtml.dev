@@ -1,0 +1,156 @@
+# pastehtml.dev — full reference
+
+> pastehtml.dev publishes a single self-contained HTML (or Markdown) file and
+> returns a private, shareable link. Each paste is served on its own isolated
+> origin (`<token>.pastehtml.dev`) where its scripts and localStorage work but
+> cannot touch any other paste or the app itself. Anonymous publishing needs no
+> account; an account API key (prefix `pht_`) lets an agent publish into a
+> user's dashboard and organize pastes into folders. This is the complete
+> machine reference. The short integration guide is at /llms.txt.
+
+## Concepts
+
+- Paste: one stored HTML document. It has a random 32-char lowercase `token`,
+  an optional user-chosen `custom_subdomain`, an optional password, an optional
+  folder, and a `views_count`. Pastes are immutable in identity: the token never
+  changes and a paste can never be deleted by anyone. Content is changed only by
+  "republishing" (an update), which keeps the same token and share link.
+- Origins & isolation: the share link `live_url` is `https://<subdomain>.pastehtml.dev/`,
+  a dedicated origin per paste. Untrusted document scripts run there with real
+  localStorage, fully isolated from other pastes and from pastehtml.dev. The app's
+  own pages and API live only on `pastehtml.dev` (and app hosts), never on paste
+  origins, so a paste cannot reach the API or frame the app under its origin.
+- Update token: anonymous creation reveals a one-time `update_token` (only its
+  digest is stored). It authorizes updates while the paste stays anonymous. A
+  normal update does NOT rotate it. Claiming the paste into an account retires it;
+  afterward the account key is the sole update credential.
+- Account API key: created by a signed-in user at /api_keys, shown once, stored
+  only as an HMAC digest, prefixed `pht_`. May be unscoped or scoped to one
+  default folder. Treat like a password: never put it in published HTML, paste
+  content, URLs, logs, or a user-visible answer.
+
+## POST /api/pastes — publish
+
+Auth: none (anonymous) OR an account API key. Body forms (equivalent):
+
+    # multipart file
+    curl -F "file=@plan.html" https://pastehtml.dev/api/pastes
+    # raw body (filename optional; defaults to untitled.html, or untitled.md for text/markdown)
+    curl --data-binary @plan.html -H "Content-Type: text/html" \
+      "https://pastehtml.dev/api/pastes?filename=plan.html"
+
+Account key (any header form):
+
+    Authorization: Bearer pht_...
+    X-PasteHTML-API-Key: pht_...
+    X-API-Key: pht_...
+
+Options (form fields or query params):
+- `password=<secret>` — gate the paste behind a password. Allowed anonymously.
+- `custom_subdomain=<slug>` — claim `<slug>.pastehtml.dev`. REQUIRES an account
+  key (401 otherwise); prevents anonymous squatting. Slug: lowercase letters,
+  digits, hyphens; 1–63 chars; cannot start/end with a hyphen; not reserved.
+- `folder_id=<int>` or `folder_name=<str>` — file into a folder. REQUIRES an
+  account key (401 otherwise). `folder_name` finds-or-creates. Pass at most one.
+- Scoped keys always publish into their folder and reject a different folder_id/
+  folder_name (422) or clear_folder (422).
+
+Response 201 (JSON): `token`, `title` (from `<title>`), `custom_subdomain`,
+`password_protected`, `views_count`, `folder` (null or `{id,name}`), `owner`
+(null or `{id}`), `account_paste` (bool), `live_url`, `url`, `raw_url`,
+`render_url`, `markdown_url`, and `update_token` (anonymous only — omitted for
+account-key publishes).
+
+Errors: 422 `{errors:[...]}` invalid content/filename/options; 401
+`{error}` an invalid/revoked key, or a folder/custom_subdomain requested without
+a key. An invalid `pht_` bearer is never silently downgraded to anonymous.
+
+## PATCH /api/pastes/:token — update (republish)
+
+`:token` is the paste's token. Authorize with EITHER the update token OR an
+account key that owns the paste:
+
+    # by update token
+    curl -X PATCH -H "Authorization: Bearer <update_token>" \
+      --data-binary @plan.html -H "Content-Type: text/html" \
+      https://pastehtml.dev/api/pastes/<token>
+
+    # by owning account key
+    curl -X PATCH -H "Authorization: Bearer pht_..." -F "file=@plan.html" \
+      https://pastehtml.dev/api/pastes/<token>
+
+Claim an anonymous paste into an account: send the account key in `Authorization`
+and the paste secret in `X-Update-Token: <update_token>`. After claiming, the
+update token stops working. Accepts new content (same two body forms) and/or
+options (`custom_subdomain`, `password`, `clear_password=1`, `folder_id`,
+`folder_name`, `clear_folder=1`). Content is optional if options are supplied.
+
+Response 200: same fields as create, minus `update_token`. Errors: 403 wrong/
+missing update token or a key that doesn't own the paste; 404 unknown token;
+422 invalid content/options.
+
+## Folders — GET/POST /api/folders
+
+Account key required.
+
+    curl -H "Authorization: Bearer pht_..." https://pastehtml.dev/api/folders
+    curl -X POST -H "Authorization: Bearer pht_..." -d "name=Roadmap" https://pastehtml.dev/api/folders
+    curl -X POST -H "Authorization: Bearer pht_..." -d "folder[name]=Roadmap" https://pastehtml.dev/api/folders
+
+GET lists `{folders:[{id,name,pastes_count}]}`. Unscoped keys list every folder;
+scoped keys list only their scoped folder. POST creates a folder (unscoped keys
+only; scoped keys get 403). 401 without a valid key.
+
+## Read a paste back
+
+- `GET /p/<token>/raw` — exact bytes, `text/plain`, never rewritten in transit.
+  Prefer this for byte-exact reads (diff before update). ETag-revalidated.
+- `GET /p/<token>/render` — same bytes as `text/html` inside a CSP sandbox.
+- `GET /p/<token>/markdown` — a lossy best-effort Markdown view (`text/markdown`).
+- `GET /p/<token>` — the inspector page (copy link, preview, highlighted source).
+- `https://<subdomain>.pastehtml.dev/` — the live document on its own origin.
+- Pastes with a `custom_subdomain` also answer at `/p/<custom_subdomain>` and its
+  `/raw|/render|/markdown` variants, in addition to `/p/<token>`.
+- Password-protected pastes require the password gate before raw/render/markdown/live.
+  All paste content is served with `X-Robots-Tag: noindex`.
+
+## Publish Markdown
+
+A `.md`/`.markdown` filename or a `text/markdown` content type is rendered
+server-side into a styled, self-contained HTML page (GitHub-flavored: tables,
+task lists, strikethrough, footnotes, autolinks; fenced `mermaid` blocks become
+diagrams). The stored paste is HTML, so the response shape is identical to an
+HTML publish. Raw HTML embedded in the Markdown is dropped — upload plain HTML
+for arbitrary markup.
+
+## Limits & rules
+
+- File: `.html`, `.htm`, `.md`, `.markdown`; UTF-8; at most 2 MB.
+- Give the document a meaningful `<title>` — it becomes the display title.
+- Make it self-contained: inline CSS/JS or load from CDNs.
+- Rate limits (per IP): publish/update 20/minute and 1,000/day; folder
+  discovery/creation 60/minute and 1,000/day.
+- Password max 72 bytes (bcrypt limit). Never publish secrets unless the document
+  itself encrypts them client-side.
+
+## Worked guides (live, self-contained pages)
+
+Read each guide's `/raw` source to reproduce its technique, then publish the
+result through the API — or just share the guide link with the user.
+
+- Password-protected / client-side-encrypted page:
+  https://lock-it-up.pastehtml.dev/ (source: https://pastehtml.dev/p/lock-it-up/raw)
+- Markdown → styled HTML page (no-server, in-browser build with live preview):
+  https://mark-it-down.pastehtml.dev/ (source: https://pastehtml.dev/p/mark-it-down/raw)
+- How this site was built by a human + an AI in a day:
+  https://making-of.pastehtml.dev/ (source: https://pastehtml.dev/p/making-of/raw)
+
+## Agent etiquette
+
+1. After publishing/updating, always show the user the `live_url`; mention `url`
+   for the source view.
+2. Use a supplied account key only for the request; never reveal it back.
+3. Save any `update_token` durably (e.g. `.pastehtml/<token>.update-token`) so a
+   later "update that doc" works. Account-key publishes may omit it — use the key.
+4. To revise a published document, PATCH the existing paste; don't publish a
+   duplicate, so the user's shared link stays current.
