@@ -38,6 +38,27 @@ class PasteTest < ActiveSupport::TestCase
     assert paste.errors[:original_filename].any?
   end
 
+  test "limits filename length before the database does" do
+    paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "#{'a' * 252}.html")
+
+    assert_not paste.valid?
+    assert paste.errors[:original_filename].any?
+  end
+
+  test "limits paste passwords to bcrypt's safe length" do
+    paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html", password: "p" * 73)
+
+    assert_not paste.valid?
+    assert paste.errors[:password].any?
+  end
+
+  test "limits paste passwords by bytes, not just characters" do
+    paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html", password: "🔒" * 19)
+
+    assert_not paste.valid?
+    assert paste.errors[:password].any?
+  end
+
   test "accepts .html and .htm filenames" do
     assert Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html").valid?
     assert Paste.new(content: "<h1>Hi</h1>", original_filename: "INDEX.HTM").valid?
@@ -47,6 +68,25 @@ class PasteTest < ActiveSupport::TestCase
     paste = create_paste
 
     assert_raises(ActiveRecord::ReadOnlyRecord) { paste.destroy! }
+    assert Paste.exists?(paste.id)
+  end
+
+  test "destroy protection runs before dependent view cleanup" do
+    paste = create_paste
+    PasteView.create!(paste:, source: "show")
+
+    # prevent_destroy! is prepended, so it must abort before the dependent
+    # paste_views DELETE is ever issued -- not merely roll it back. Assert the
+    # DELETE SQL never fires (a rolled-back DELETE would still be emitted, so
+    # assert_no_difference on the count alone can't tell the two orderings apart).
+    deletes = []
+    counter = ->(*, payload) { deletes << payload[:sql] if payload[:sql] =~ /DELETE.+paste_views/i }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+      assert_raises(ActiveRecord::ReadOnlyRecord) { paste.destroy! }
+    end
+
+    assert_empty deletes, "prevent_destroy! must fire before the dependent paste_views cleanup"
+    assert_predicate PasteView.where(paste:), :any?
   end
 
   test "reveals a hard-to-guess update token once and stores only its digest" do
@@ -199,8 +239,63 @@ class PasteTest < ActiveSupport::TestCase
     assert_predicate paste.content, :valid_encoding?
   end
 
+  test "normalizes custom subdomains and uses them for public urls" do
+    paste = create_paste(custom_subdomain: " Launch-Plan ")
+
+    assert_equal "launch-plan", paste.custom_subdomain
+    assert_equal "launch-plan", paste.public_subdomain
+  end
+
+  test "rejects reserved custom subdomains" do
+    paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html", custom_subdomain: "www")
+
+    assert_not paste.valid?
+    assert paste.errors[:custom_subdomain].any?
+  end
+
+  test "rejects a custom subdomain already taken by another paste" do
+    create_paste(custom_subdomain: "shared-space")
+    paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html", custom_subdomain: "shared-space")
+
+    assert_not paste.valid?
+    assert paste.errors[:custom_subdomain].any?
+  end
+
+  test "rejects a custom subdomain that collides with another paste's token" do
+    # find_by_subdomain! resolves an origin by token OR custom_subdomain, so a
+    # paste must not be able to claim a subdomain equal to another paste's token.
+    existing = create_paste
+    paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html", custom_subdomain: existing.token)
+
+    assert_not paste.valid?
+    assert paste.errors[:custom_subdomain].any?
+  end
+
+  test "folders must belong to the paste owner" do
+    paste = Paste.new(content: "<h1>Hi</h1>", original_filename: "index.html", folder: folders(:projects))
+
+    assert_not paste.valid?
+    assert paste.errors[:folder].any?
+
+    paste.user = users(:alice)
+    assert paste.valid?
+  end
+
+  test "a grandfathered reserved custom subdomain survives a re-save" do
+    # The vanity pages (db/seeds.rb) hold reserved slugs set past validation; a
+    # later republish must not fail the reserved check on the unchanged value.
+    paste = create_paste
+    slug = Paste::LEGACY_VANITY_SUBDOMAINS.first
+    paste.update_column(:custom_subdomain, slug)
+
+    reloaded = Paste.find(paste.id)
+    assert reloaded.valid?, reloaded.errors.full_messages.to_sentence
+    assert reloaded.republish(content: "<title>v2</title><h1>v2</h1>")
+    assert_equal slug, reloaded.reload.custom_subdomain
+  end
+
   private
-    def create_paste(content: "<h1>Hello</h1>", original_filename: "hello.html")
-      Paste.create!(content:, original_filename:)
+    def create_paste(content: "<h1>Hello</h1>", original_filename: "hello.html", **attributes)
+      Paste.create!(attributes.merge(content:, original_filename:))
     end
 end

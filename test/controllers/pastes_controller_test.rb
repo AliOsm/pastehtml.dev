@@ -1,12 +1,36 @@
 require "test_helper"
 
 class PastesControllerTest < ActionDispatch::IntegrationTest
+  test "resolves a paste by its custom subdomain path in addition to its token" do
+    paste = Paste.create!(content: "<title>Vanity</title><h1>Hi</h1>", original_filename: "v.html", custom_subdomain: "vanity-demo")
+
+    get paste_url("vanity-demo")
+    assert_response :success
+
+    get raw_paste_url("vanity-demo")
+    assert_response :success
+    assert_equal paste.content, response.body
+
+    get paste_url(paste.token) # the token path still works too
+    assert_response :success
+  end
+
   test "root shows the upload page" do
     get root_url
 
     assert_response :success
     assert_select "form[action=?]", pastes_path
     assert_select "input[type=file]"
+  end
+
+  test "anonymous root does not show paste options" do
+    get root_url
+
+    assert_response :success
+    assert_select "input[name=custom_subdomain]", count: 0
+    assert_select "input[name=password]", count: 0
+    assert_select "select[name=folder_id]", count: 0
+    assert_select "input[type=submit]", count: 0
   end
 
   test "agents can discover the integration guide" do
@@ -30,6 +54,14 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_select "link[rel=manifest][href=?]", pwa_manifest_path
   end
 
+  test "app pages link only the built stylesheet" do
+    get root_url
+
+    assert_response :success
+    assert_select "link[rel=stylesheet][href*='application.tailwind']", count: 0
+    assert_select "link[rel=stylesheet][href*='highlight']", count: 0
+  end
+
   test "creating a paste from an html file redirects to its page" do
     assert_difference "Paste.count" do
       post pastes_url, params: { file: fixture_file_upload("hello.html", "text/html") }
@@ -39,6 +71,21 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     paste = Paste.find_by!(token:)
     assert_equal "hello.html", paste.original_filename
     assert_includes paste.content, "Hello from a fixture"
+  end
+
+  test "anonymous web publishing ignores paste option params" do
+    assert_difference "Paste.count" do
+      post pastes_url, params: {
+        file: fixture_file_upload("hello.html", "text/html"),
+        custom_subdomain: "anonymous-option",
+        password: "secret-password"
+      }
+    end
+
+    paste = Paste.order(:created_at).last
+    assert_nil paste.user
+    assert_nil paste.custom_subdomain
+    assert_not paste.password_protected?
   end
 
   test "rejects a missing file" do
@@ -71,6 +118,39 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
     assert_includes paste.content, ">Sample Doc</h1>"
     assert_includes paste.content, '<pre class="mermaid">'
     assert_equal "Sample Doc", paste.title
+  end
+
+  test "password gate on paste origins does not load app pwa chrome and redirects locally" do
+    paste = Paste.create!(
+      content: "<h1>Locked live paste</h1>",
+      original_filename: "locked.html",
+      custom_subdomain: "locked-live",
+      password: "sekret"
+    )
+
+    host! "locked-live.example.com"
+
+    get "/"
+
+    assert_response :unauthorized
+    assert_select "link[rel=manifest]", count: 0
+    assert_no_match(/data-controller="pwa"/, response.body)
+
+    post "/", params: { password: "sekret" }
+
+    assert_redirected_to "/"
+
+    follow_redirect!
+    assert_response :success
+    assert_equal paste.content, response.body
+  end
+
+  test "paste origins answer automatic favicon probes quietly" do
+    host! "#{pastes(:hello).token}.example.com"
+
+    get "/favicon.ico"
+
+    assert_response :no_content
   end
 
   test "show displays the share link, preview and source" do

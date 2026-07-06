@@ -1,0 +1,19 @@
+<% set_meta_tags title: t("paste_passwords.title"), noindex: true %>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-14">
+  <p class="inline-block w-fit -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+    <%= t("paste_passwords.eyebrow") %>
+  </p>
+  <h1 class="mt-5 font-display text-5xl text-balance text-ink text-kapow sm:text-6xl"><%= t("paste_passwords.heading") %></h1>
+  <p class="mt-4 text-base text-ink/70 sm:text-sm"><%= t("paste_passwords.body", title: @paste.display_title) %></p>
+
+  <%= form_with url: (@paste_password_form_url || paste_password_path(@paste)), class: "mt-8 grid gap-5 rounded-lg border-3 border-ink bg-white p-5 shadow-comic" do |form| %>
+    <div>
+      <%= form.label :password, t("paste_passwords.password"), class: "font-display text-2xl tracking-wide text-ink" %>
+      <%= form.password_field :password, required: true, autofocus: true, autocomplete: "current-password", maxlength: Paste::MAX_PASSWORD_BYTES,
+            class: "mt-2 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+    </div>
+    <%= form.submit t("paste_passwords.submit"),
+          class: "rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90 t-press" %>
+  <% end %>
+</div>
