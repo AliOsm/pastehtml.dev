@@ -1,0 +1,7 @@
+<% set_meta_tags title: t("folders.new.title"), noindex: true %>
+
+<div class="mx-auto w-full max-w-xl flex-1 px-6 py-10">
+  <p class="inline-block -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm"><%= t("folders.eyebrow") %></p>
+  <h1 class="mt-5 font-display text-5xl text-balance text-ink text-kapow sm:text-6xl"><%= t("folders.new.heading") %></h1>
+  <%= render "form", folder: @folder %>
+</div>

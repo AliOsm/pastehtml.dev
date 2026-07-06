@@ -1,0 +1,77 @@
+<% set_meta_tags title: t("dashboard.meta_title"), noindex: true %>
+
+<div class="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="inline-block -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+        <%= t("dashboard.eyebrow") %>
+      </p>
+      <h1 class="mt-5 font-display text-5xl text-balance break-words text-ink text-kapow sm:text-6xl"><%= @folder ? @folder.name : t("dashboard.heading") %></h1>
+      <p class="mt-3 max-w-[58ch] text-base text-ink/70 sm:text-sm"><%= t("dashboard.body") %></p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <%= link_to t("dashboard.publish"), root_path,
+            class: "rounded-md border-3 border-ink bg-hero-red px-4 py-2.5 font-display text-xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90" %>
+      <%= link_to t("folders.new_link"), new_folder_path,
+            class: "rounded-md border-3 border-ink bg-hero-yellow px-4 py-2.5 font-display text-xl tracking-wide text-ink shadow-comic-sm hover:bg-white" %>
+      <%= link_to t("dashboard.api_keys"), api_keys_path,
+            class: "rounded-md border-3 border-ink bg-white px-4 py-2.5 font-display text-xl tracking-wide text-ink shadow-comic-sm hover:bg-hero-yellow" %>
+    </div>
+  </div>
+
+  <section class="mt-10 grid gap-6 lg:grid-cols-[16rem_1fr]">
+    <aside class="rounded-lg border-3 border-ink bg-white p-4 shadow-comic-sm">
+      <h2 class="font-display text-2xl tracking-wide text-ink"><%= t("dashboard.folders") %></h2>
+      <nav class="mt-4 grid gap-2">
+        <%= link_to t("dashboard.all_pastes"), pastes_path,
+              class: "rounded-md border-2 border-ink px-3 py-2 text-sm font-semibold #{ @folder ? "bg-white text-ink/70" : "bg-hero-yellow text-ink" }" %>
+        <% @folders.each do |folder| %>
+          <div class="flex items-center gap-2">
+            <%= link_to folder.name, folder_path(folder),
+                  class: "min-w-0 flex-1 truncate rounded-md border-2 border-ink px-3 py-2 text-sm font-semibold #{ @folder == folder ? "bg-hero-yellow text-ink" : "bg-white text-ink/70" }" %>
+            <%= link_to t("folders.edit_short"), edit_folder_path(folder),
+                  class: "shrink-0 text-xs font-semibold text-hero-blue underline decoration-2 underline-offset-4" %>
+          </div>
+        <% end %>
+      </nav>
+    </aside>
+
+    <section class="grid gap-4">
+      <% if @pastes.any? %>
+        <% @pastes.each do |paste| %>
+          <article class="rounded-lg border-3 border-ink bg-white p-4 shadow-comic-sm">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div class="min-w-0">
+                <h2 class="truncate font-display text-3xl tracking-wide text-ink sm:text-2xl"><%= paste.display_title %></h2>
+                <p class="mt-1 break-all font-mono text-sm text-ink/70" dir="ltr"><%= paste_live_url(paste) %></p>
+                <p class="mt-2 text-sm text-ink/60">
+                  <%= t("show.meta.views", count: paste.views_count) %>
+                  · <%= number_to_human_size(paste.content_bytes.to_i) %>
+                  <% if paste.folder.present? %>
+                    · <%= paste.folder.name %>
+                  <% end %>
+                  <% if paste.password_protected? %>
+                    · <%= t("show.meta.password_protected") %>
+                  <% end %>
+                </p>
+              </div>
+              <div class="flex shrink-0 flex-wrap gap-2">
+                <%= link_to t("dashboard.open"), paste_path(paste),
+                      class: "rounded-md border-2 border-ink bg-hero-yellow px-3 py-2 font-display text-lg tracking-wide text-ink shadow-comic-sm hover:bg-white" %>
+                <%= link_to t("dashboard.edit"), edit_owned_paste_path(paste),
+                      class: "rounded-md border-2 border-ink bg-white px-3 py-2 font-display text-lg tracking-wide text-ink shadow-comic-sm hover:bg-hero-yellow" %>
+              </div>
+            </div>
+          </article>
+        <% end %>
+      <% else %>
+        <div class="rounded-lg border-3 border-ink bg-white p-6 text-center shadow-comic-sm">
+          <h2 class="font-display text-3xl tracking-wide text-ink"><%= t("dashboard.empty_title") %></h2>
+          <p class="mt-2 text-base text-ink/70 sm:text-sm"><%= t("dashboard.empty_body") %></p>
+          <%= link_to t("dashboard.publish"), root_path,
+                class: "mt-5 inline-block rounded-md border-3 border-ink bg-hero-red px-4 py-2.5 font-display text-xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90" %>
+        </div>
+      <% end %>
+    </section>
+  </section>
+</div>

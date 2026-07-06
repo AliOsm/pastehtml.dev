@@ -1,0 +1,25 @@
+<%= form_with model: folder, class: "mt-8 grid gap-5 rounded-lg border-3 border-ink bg-white p-5 shadow-comic" do |form| %>
+  <% if folder.errors.any? %>
+    <div data-controller="error-summary" tabindex="-1" role="alert" class="rounded-lg border-2 border-ink bg-paper p-3 text-base text-hero-red sm:text-sm">
+      <p class="font-semibold"><%= t("folders.form.errors") %></p>
+      <ul class="mt-2 list-disc ps-5">
+        <% folder.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div>
+    <%= form.label :name, t("folders.form.name"), class: "font-display text-2xl tracking-wide text-ink" %>
+    <%= form.text_field :name, required: true, autofocus: true, maxlength: 80,
+          class: "mt-2 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
+  </div>
+
+  <div class="flex flex-wrap gap-3">
+    <%= form.submit t("folders.form.save"),
+          class: "rounded-md border-3 border-ink bg-hero-red px-4 py-2.5 font-display text-2xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90 t-press" %>
+    <%= link_to t("folders.form.cancel"), pastes_path,
+          class: "rounded-md border-3 border-ink bg-white px-4 py-2.5 font-display text-2xl tracking-wide text-ink shadow-comic-sm hover:bg-hero-yellow t-press" %>
+  </div>
+<% end %>

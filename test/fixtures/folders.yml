@@ -1,0 +1,7 @@
+projects:
+  user: alice
+  name: Projects
+
+bob_notes:
+  user: bob
+  name: Notes

@@ -1,0 +1,18 @@
+alice_agent:
+  user: alice
+  name: Alice agent key
+  key_digest: <%= ApiKey.digest("pht_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA") %>
+  key_prefix: pht_AAAAAAAA
+
+alice_projects_key:
+  user: alice
+  folder: projects
+  name: Projects folder key
+  key_digest: <%= ApiKey.digest("pht_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB") %>
+  key_prefix: pht_BBBBBBBB
+
+bob_key:
+  user: bob
+  name: Bob key
+  key_digest: <%= ApiKey.digest("pht_DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD") %>
+  key_prefix: pht_DDDDDDDD
