@@ -43,7 +43,7 @@ class AccountPastesTest < ActionDispatch::IntegrationTest
     assert_select "input[name=custom_subdomain]"
     assert_select "input[name=password]"
     assert_select "select[name=folder_id]"
-    assert_select "input[type=submit]"
+    assert_select "button[type=submit]"
   end
 
   test "signed in users can publish into a folder with a custom subdomain" do

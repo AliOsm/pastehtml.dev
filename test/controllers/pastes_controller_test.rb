@@ -102,8 +102,8 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
       post pastes_url, params: { file: fixture_file_upload("notes.txt", "text/plain") }
     end
 
-    assert_redirected_to root_url
-    assert_match(/must be an .html/, flash[:alert])
+    assert_response :unprocessable_entity
+    assert_match(/must be an .html/, response.body)
   end
 
   test "creating a paste from a markdown file renders and redirects to its page" do
