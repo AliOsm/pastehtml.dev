@@ -23,6 +23,7 @@ class PastesController < ApplicationController
 
   def index
     @folders = Current.user.folders.order(:name)
+    @folder_counts = Current.user.pastes.group(:folder_id).count
     @folder = Current.user.folders.find_by(id: params[:folder_id]) if params[:folder_id].present?
     @pastes = Current.user.pastes.with_content_size.includes(:folder).recent
     @pastes = @pastes.where(folder: @folder) if @folder.present?
@@ -42,7 +43,11 @@ class PastesController < ApplicationController
     if paste.save
       redirect_to paste_path(paste), status: :see_other, notice: signed_in_notice(paste)
     else
-      redirect_to root_path, status: :see_other, alert: paste.errors.full_messages.to_sentence
+      # Re-render in place so a signed-in publisher keeps their typed options
+      # (subdomain, folder, ...) instead of being bounced to a fresh home page.
+      @folders = authenticated? ? Current.user.folders.order(:name) : Folder.none
+      flash.now[:alert] = paste.errors.full_messages.to_sentence
+      render :new, status: :unprocessable_entity
     end
   end
 

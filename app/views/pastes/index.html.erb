@@ -19,16 +19,22 @@
     </div>
   </div>
 
-  <section class="mt-10 grid gap-6 lg:grid-cols-[16rem_1fr]">
+  <section class="mt-10 grid items-start gap-6 lg:grid-cols-[16rem_1fr]">
     <aside class="rounded-lg border-3 border-ink bg-white p-4 shadow-comic-sm">
       <h2 class="font-display text-2xl tracking-wide text-ink"><%= t("dashboard.folders") %></h2>
       <nav class="mt-4 grid gap-2">
-        <%= link_to t("dashboard.all_pastes"), pastes_path,
-              class: "rounded-md border-2 border-ink px-3 py-2 text-sm font-semibold #{ @folder ? "bg-white text-ink/70" : "bg-hero-yellow text-ink" }" %>
+        <%= link_to pastes_path,
+              class: "flex items-center justify-between gap-2 rounded-md border-2 border-ink px-3 py-2 text-sm font-semibold #{ @folder ? "bg-white text-ink/70" : "bg-hero-yellow text-ink" }" do %>
+          <span class="truncate"><%= t("dashboard.all_pastes") %></span>
+          <span class="shrink-0 font-mono text-xs tabular-nums text-ink/50"><%= @folder_counts.values.sum %></span>
+        <% end %>
         <% @folders.each do |folder| %>
           <div class="flex items-center gap-2">
-            <%= link_to folder.name, folder_path(folder),
-                  class: "min-w-0 flex-1 truncate rounded-md border-2 border-ink px-3 py-2 text-sm font-semibold #{ @folder == folder ? "bg-hero-yellow text-ink" : "bg-white text-ink/70" }" %>
+            <%= link_to folder_path(folder),
+                  class: "flex min-w-0 flex-1 items-center justify-between gap-2 rounded-md border-2 border-ink px-3 py-2 text-sm font-semibold #{ @folder == folder ? "bg-hero-yellow text-ink" : "bg-white text-ink/70" }" do %>
+              <span class="truncate"><%= folder.name %></span>
+              <span class="shrink-0 font-mono text-xs tabular-nums text-ink/50"><%= @folder_counts[folder.id] || 0 %></span>
+            <% end %>
             <%= link_to t("folders.edit_short"), edit_folder_path(folder),
                   class: "shrink-0 text-xs font-semibold text-hero-blue underline decoration-2 underline-offset-4" %>
           </div>

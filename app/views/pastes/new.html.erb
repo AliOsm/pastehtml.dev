@@ -122,8 +122,17 @@
           </div>
         </div>
 
-        <%= form.submit t("pastes.form.publish"),
-              class: "mt-6 w-full rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic transition-transform duration-100 hover:bg-hero-red/90 active:translate-x-1 active:translate-y-1 active:shadow-none" %>
+        <button type="submit"
+                class="mt-6 flex w-full items-center justify-center gap-2 rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic transition-transform duration-100 hover:bg-hero-red/90 active:translate-x-1 active:translate-y-1 active:shadow-none group-data-busy:pointer-events-none group-data-busy:opacity-80">
+          <span class="group-data-busy:hidden"><%= t("pastes.form.publish") %></span>
+          <span class="hidden items-center gap-2 group-data-busy:flex">
+            <svg viewBox="0 0 24 24" fill="none" class="size-6 animate-spin" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" class="opacity-25" />
+              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+            <%= t("home.dropzone.publishing") %>
+          </span>
+        </button>
       </section>
     <% end %>
   <% end %>

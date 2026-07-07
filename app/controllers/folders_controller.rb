@@ -10,6 +10,7 @@ class FoldersController < ApplicationController
 
   def show
     @folders = Current.user.folders.order(:name)
+    @folder_counts = Current.user.pastes.group(:folder_id).count
     @pastes = @folder.pastes.with_content_size.includes(:folder).recent
     render "pastes/index"
   end
