@@ -90,8 +90,8 @@
         <h2 class="font-display text-3xl tracking-wide text-ink sm:text-2xl"><%= t("home.options.title") %></h2>
         <p class="mt-1 text-base text-ink/70 sm:text-sm"><%= t("home.options.body") %></p>
 
-        <div class="mt-5 grid gap-4 md:grid-cols-2">
-          <div>
+        <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="min-w-0">
             <%= label_tag :custom_subdomain, t("pastes.form.custom_subdomain"), class: "font-display text-xl tracking-wide text-ink" %>
             <div dir="ltr" class="mt-1 flex rounded-md border-2 border-ink bg-paper shadow-comic-sm focus-within:outline-3 focus-within:-outline-offset-1 focus-within:outline-hero-blue">
               <%= text_field_tag :custom_subdomain, params[:custom_subdomain], placeholder: t("pastes.form.custom_subdomain_placeholder"), maxlength: 63, dir: "ltr",
@@ -100,13 +100,13 @@
             </div>
           </div>
 
-          <div>
+          <div class="min-w-0">
             <%= label_tag :password, t("pastes.form.password"), class: "font-display text-xl tracking-wide text-ink" %>
             <%= password_field_tag :password, nil, autocomplete: "new-password", maxlength: Paste::MAX_PASSWORD_BYTES, placeholder: t("pastes.form.password_placeholder"),
                   class: "mt-1 w-full rounded-md border-2 border-ink bg-paper px-3 py-2 text-sm text-ink shadow-comic-sm" %>
           </div>
 
-          <div class="md:col-span-2">
+          <div class="min-w-0 md:col-span-2">
             <%= label_tag :folder_id, t("pastes.form.folder"), class: "font-display text-xl tracking-wide text-ink" %>
             <div class="mt-1 flex items-center gap-3 max-sm:flex-col max-sm:items-stretch">
               <div class="relative w-full">
@@ -122,8 +122,8 @@
           </div>
         </div>
 
-        <button type="submit"
-                class="mt-6 flex w-full items-center justify-center gap-2 rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic transition-transform duration-100 hover:bg-hero-red/90 active:translate-x-1 active:translate-y-1 active:shadow-none group-data-busy:pointer-events-none group-data-busy:opacity-80">
+        <button type="submit" data-dropzone-target="publish"
+                class="mt-6 flex w-full items-center justify-center gap-2 rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic transition-transform duration-100 hover:bg-hero-red/90 active:translate-x-1 active:translate-y-1 active:shadow-none group-data-busy:pointer-events-none group-data-busy:opacity-80 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
           <span class="group-data-busy:hidden"><%= t("pastes.form.publish") %></span>
           <span class="hidden items-center gap-2 group-data-busy:flex">
             <svg viewBox="0 0 24 24" fill="none" class="size-6 animate-spin" aria-hidden="true">
@@ -133,6 +133,7 @@
             <%= t("home.dropzone.publishing") %>
           </span>
         </button>
+        <p class="mt-2 text-center text-sm text-ink/60 group-data-busy:hidden" data-dropzone-target="publishHint"><%= t("home.options.needs_file") %></p>
       </section>
     <% end %>
   <% end %>

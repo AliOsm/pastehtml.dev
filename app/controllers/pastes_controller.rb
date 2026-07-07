@@ -35,7 +35,13 @@ class PastesController < ApplicationController
   end
 
   def create
-    return redirect_to root_path, status: :see_other, alert: t("flash.choose_file") unless upload?
+    unless upload?
+      # Re-render in place (not a redirect to root) so pressing Publish without a
+      # file keeps the signed-in user's scroll position and typed options.
+      @folders = authenticated? ? Current.user.folders.order(:name) : Folder.none
+      flash.now[:alert] = t("flash.choose_file")
+      return render :new, status: :unprocessable_entity
+    end
 
     paste = Paste.from_upload(upload)
     apply_paste_options(paste)

@@ -130,6 +130,7 @@ en:
     options:
       title: "Publish options"
       body: "Choose a custom subdomain, add an optional password, and file the paste into a folder when you're signed in."
+      needs_file: "Choose a file above to publish."
     features:
       instant:
         title: "Instant link!"

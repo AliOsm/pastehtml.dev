@@ -5,7 +5,7 @@ const MAX_BYTES = 2 * 1024 * 1024
 // Drives the upload drop zone: browsing, drag-and-drop, client-side
 // validation with an error shake, and the busy state while publishing.
 export default class extends Controller {
-  static targets = ["input", "zone", "wrap", "error", "heading", "hint"]
+  static targets = ["input", "zone", "wrap", "error", "heading", "hint", "publish", "publishHint"]
   // User-facing messages are translated server-side and handed in as values, so
   // the controller stays locale-agnostic.
   static values = {
@@ -22,6 +22,7 @@ export default class extends Controller {
 
   connect() {
     if (this.errorTarget.textContent.trim()) this.showError()
+    this.reflectPublishState()
   }
 
   disconnect() {
@@ -114,6 +115,17 @@ export default class extends Controller {
   reflectSelection(file) {
     if (this.hasHeadingTarget) this.headingTarget.textContent = file.name
     if (this.hasHintTarget) this.hintTarget.textContent = this.selectedValue
+    this.reflectPublishState()
+  }
+
+  // Signed-in users publish explicitly: keep the button disabled (with a hint)
+  // until a file is loaded, so pressing it with no file can't fire a doomed
+  // submit that just bounces them to the top of the page.
+  reflectPublishState() {
+    if (!this.hasPublishTarget) return
+    const hasFile = this.inputTarget.files.length > 0
+    this.publishTarget.disabled = !hasFile
+    if (this.hasPublishHintTarget) this.publishHintTarget.hidden = hasFile
   }
 
   problemWith(file) {
