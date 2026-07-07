@@ -50,8 +50,8 @@ class LocalizationTest < ActionDispatch::IntegrationTest
   test "flash messages localize to Arabic" do
     post pastes_url, headers: { "Cookie" => "locale=ar" }
 
-    assert_redirected_to root_url
-    assert_equal I18n.t("flash.choose_file", locale: :ar), flash[:alert]
+    assert_response :unprocessable_entity
+    assert_includes response.body, I18n.t("flash.choose_file", locale: :ar)
   end
 
   test "dates localize to Arabic month names" do

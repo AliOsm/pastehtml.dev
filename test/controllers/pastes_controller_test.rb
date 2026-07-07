@@ -93,8 +93,8 @@ class PastesControllerTest < ActionDispatch::IntegrationTest
       post pastes_url
     end
 
-    assert_redirected_to root_url
-    assert_equal "Choose an HTML file to upload.", flash[:alert]
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Choose an HTML file to upload."
   end
 
   test "rejects a non-html file" do
