@@ -7,6 +7,9 @@ Allow: /
 # The API is for programmatic clients, not crawlers.
 Disallow: /api/
 
+# The public, indexable pages, for search engines.
+Sitemap: https://pastehtml.dev/sitemap.xml
+
 # Building an AI agent or LLM integration? Start here:
 #   https://pastehtml.dev/llms.txt       — concise integration guide
 #   https://pastehtml.dev/llms-full.txt  — complete machine reference
