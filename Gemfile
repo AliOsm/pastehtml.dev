@@ -70,6 +70,10 @@ gem "commonmarker", "~> 2.0"
 
 gem "meta-tags", "~> 2.23"
 
+# Localized Rails defaults (validation errors, dates, numbers) for non-English
+# locales -- e.g. Arabic messages for blank / too_long / taken.
+gem "rails-i18n", "~> 8.0"
+
 # Trust Cloudflare's IP ranges so remote_ip (and the per-IP rate limits) see
 # real client addresses behind the CF proxy. Production-only: the gem fetches
 # the ranges over the network, which dev and test have no use for.
