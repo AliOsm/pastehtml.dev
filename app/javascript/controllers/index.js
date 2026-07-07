@@ -7,6 +7,9 @@ import { application } from "./application"
 import ClipboardController from "./clipboard_controller"
 application.register("clipboard", ClipboardController)
 
+import DismissController from "./dismiss_controller"
+application.register("dismiss", DismissController)
+
 import DropzoneController from "./dropzone_controller"
 application.register("dropzone", DropzoneController)
 

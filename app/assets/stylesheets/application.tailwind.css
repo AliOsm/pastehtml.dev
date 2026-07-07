@@ -64,6 +64,20 @@ a, button, select, summary, [role="button"], input[type="submit"] {
   touch-action: manipulation;
 }
 
+/* iOS Safari zooms the viewport in when a focused text field's font is under
+   16px. Keep every text-entry control at 16px on small screens so focusing never
+   zooms; the design's smaller sizes still apply from the sm breakpoint up. */
+@media (max-width: 639.98px) {
+  input:not([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="file"], [type="range"], [type="color"]),
+  select,
+  textarea {
+    /* !important so it also wins over more-specific scoped rules (e.g. the blog
+       guides' .vanity-page .forge inputs) -- the goal is a hard 16px floor on
+       every text field so nothing triggers the iOS focus-zoom. */
+    font-size: 16px !important;
+  }
+}
+
 /* One consistent comic focus ring on text fields and selects, replacing the
    generic browser-default outline. In @layer base so an explicit `outline-none`
    utility still wins -- e.g. the subdomain composite opts its inner field out and
@@ -101,11 +115,14 @@ a, button, select, summary, [role="button"], input[type="submit"] {
 }
 
 /* The Arabic display face (Lalezar) has deep descenders and diacritics that
-   overflow Tailwind's line-height:1 on the giant kapow headings, colliding with
-   the next element. Give RTL headings real leading (Latin/Bangers keeps its
-   tight line-height). */
-[dir="rtl"] .text-kapow {
-  line-height: 1.3;
+   overflow the tight Latin line-heights on the giant comic headings, colliding
+   with the subtitle below. Give RTL headings real leading plus a little room for
+   the descenders (Latin/Bangers keeps its tight line-height). Covers both the app
+   kapow headings and the blog-page hero titles. */
+[dir="rtl"] .text-kapow,
+[dir="rtl"] .vanity-page h1 {
+  line-height: 1.35;
+  padding-bottom: 0.15em;
 }
 
 /* In-site fullscreen open/close. The panel morphs between its inline spot

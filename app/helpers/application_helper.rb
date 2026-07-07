@@ -30,7 +30,7 @@ module ApplicationHelper
   # each label carries its own lang/dir so its script always shapes correctly.
   def locale_toggle
     tag.nav dir: "ltr", aria: { label: t("layout.switch_language") },
-        class: "inline-flex rotate-1 items-center overflow-hidden rounded-md border-2 border-ink bg-white font-display text-base tracking-wide shadow-comic-sm" do
+        class: "inline-flex rotate-1 items-center overflow-hidden rounded-md border-2 border-ink bg-white font-display text-sm tracking-wide shadow-comic-sm sm:text-base" do
       safe_join(I18n.available_locales.map.with_index { |locale, i| locale_segment(locale, first: i.zero?) })
     end
   end
@@ -60,10 +60,10 @@ module ApplicationHelper
 
       if locale == I18n.locale
         tag.span label, lang: locale, dir: dir_for(locale), aria: { current: "true" },
-          class: "bg-ink px-2.5 py-0.5 text-paper#{divider}"
+          class: "bg-ink px-2 py-0.5 sm:px-2.5 text-paper#{divider}"
       else
         link_to label, locale_path(locale), lang: locale, dir: dir_for(locale),
-          class: "px-2.5 py-0.5 text-ink/60 hover:bg-hero-yellow hover:text-ink#{divider}"
+          class: "px-2 py-0.5 sm:px-2.5 text-ink/60 hover:bg-hero-yellow hover:text-ink#{divider}"
       end
     end
 
