@@ -43,22 +43,23 @@
     <div class="isolate flex min-h-dvh flex-col overflow-x-clip">
       <a href="#main" class="sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:start-3 focus-visible:top-3 focus-visible:z-50 focus-visible:rounded-md focus-visible:border-3 focus-visible:border-ink focus-visible:bg-white focus-visible:px-4 focus-visible:py-2 focus-visible:font-display focus-visible:text-ink focus-visible:shadow-comic-sm"><%= t("layout.skip_to_content") %></a>
       <header class="flex items-center justify-between gap-2 px-4 py-4 sm:gap-4 sm:px-10 sm:py-5">
-        <a href="/" class="shrink-0 -rotate-1 border-3 border-ink bg-white px-2 py-0.5 font-display text-xl tracking-wide shadow-comic-sm sm:px-3 sm:py-1 sm:text-2xl">
-          pastehtml<span class="text-hero-red">.dev</span>
+        <a href="/" dir="ltr" aria-label="pastehtml.dev" class="inline-flex size-11 shrink-0 items-center justify-center -rotate-1 border-3 border-ink bg-white font-display text-xl tracking-wide shadow-comic-sm sm:size-auto sm:px-3 sm:py-1 sm:text-2xl">
+          <span class="sm:hidden">P<span class="text-hero-red">.</span></span>
+          <span class="hidden sm:inline">pastehtml<span class="text-hero-red">.dev</span></span>
         </a>
-        <div class="flex items-center justify-end gap-1.5 sm:gap-3">
-          <nav aria-label="<%= t("layout.primary_nav") %>" class="flex items-center gap-1.5 sm:gap-3">
+        <div class="flex items-center justify-end gap-2.5 sm:gap-3">
+          <nav aria-label="<%= t("layout.primary_nav") %>" class="flex items-center gap-2.5 sm:gap-3">
           <%# On mobile each nav item shows only its icon (label hidden) to keep the
               header on one uncrowded row; the text label returns from the sm breakpoint. %>
           <% if authenticated? %>
             <% dashboard_current = current_nav?(:dashboard) %>
             <%= link_to pastes_path, aria: { label: t("layout.dashboard"), current: ("page" if dashboard_current) },
-                  class: "inline-flex items-center rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{dashboard_current ? "bg-ink text-paper" : "bg-hero-yellow text-ink hover:bg-white"}" do %>
+                  class: "inline-flex items-center sm:rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{dashboard_current ? "bg-ink text-paper" : "bg-hero-yellow text-ink hover:bg-white"}" do %>
               <%= nav_icon(:dashboard) %><span class="hidden sm:inline"><%= t("layout.dashboard") %></span>
             <% end %>
             <% api_keys_current = current_nav?(:api_keys) %>
             <%= link_to api_keys_path, aria: { label: t("layout.api_keys"), current: ("page" if api_keys_current) },
-                  class: "inline-flex items-center -rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{api_keys_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" do %>
+                  class: "inline-flex items-center sm:-rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{api_keys_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" do %>
               <%= nav_icon(:api_keys) %><span class="hidden sm:inline"><%= t("layout.api_keys") %></span>
             <% end %>
             <%= button_to session_path, method: :delete, aria: { label: t("layout.sign_out") },
@@ -68,12 +69,12 @@
           <% else %>
             <% sign_in_current = current_nav?(:sign_in) %>
             <%= link_to new_session_path, aria: { label: t("layout.sign_in"), current: ("page" if sign_in_current) },
-                  class: "inline-flex items-center rotate-2 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{sign_in_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" do %>
+                  class: "inline-flex items-center sm:rotate-2 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{sign_in_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" do %>
               <%= nav_icon(:sign_in) %><span class="hidden sm:inline"><%= t("layout.sign_in") %></span>
             <% end %>
             <% sign_up_current = current_nav?(:sign_up) %>
             <%= link_to new_user_path, aria: { label: t("layout.sign_up"), current: ("page" if sign_up_current) },
-                  class: "inline-flex items-center -rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{sign_up_current ? "bg-ink text-paper" : "bg-hero-yellow text-ink hover:bg-white"}" do %>
+                  class: "inline-flex items-center sm:-rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{sign_up_current ? "bg-ink text-paper" : "bg-hero-yellow text-ink hover:bg-white"}" do %>
               <%= nav_icon(:sign_up) %><span class="hidden sm:inline"><%= t("layout.sign_up") %></span>
             <% end %>
           <% end %>

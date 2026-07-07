@@ -25,14 +25,15 @@ module ApplicationHelper
     "#{request.base_url}/og-image.png"
   end
 
-  # The comic header chip that flips the UI between English and Arabic. Forced
-  # LTR so the two segments keep a stable "EN | عربي" order in both directions;
-  # each label carries its own lang/dir so its script always shapes correctly.
+  # A single comic button, matching the header nav buttons, that flips to the
+  # other language -- labelled with that language's own name (عربي on the English
+  # UI, EN on the Arabic one). Straight on mobile, tilted from sm up like its
+  # neighbours; its lang/dir make the label's script shape correctly.
   def locale_toggle
-    tag.nav dir: "ltr", aria: { label: t("layout.switch_language") },
-        class: "inline-flex rotate-1 items-center overflow-hidden rounded-md border-2 border-ink bg-white font-display text-sm tracking-wide shadow-comic-sm sm:text-base" do
-      safe_join(I18n.available_locales.map.with_index { |locale, i| locale_segment(locale, first: i.zero?) })
-    end
+    other = I18n.available_locales.find { |locale| locale != I18n.locale } || I18n.locale
+    link_to t("language_short", locale: other), locale_path(other),
+      lang: other, dir: dir_for(other), aria: { label: t("layout.switch_language") },
+      class: "inline-flex size-11 items-center justify-center border-2 border-ink bg-white font-display text-xs tracking-wide text-ink shadow-comic-sm hover:bg-hero-yellow sm:size-auto sm:rotate-1 sm:px-2.5 sm:py-1 sm:text-sm"
   end
 
   def text_direction
@@ -69,19 +70,6 @@ module ApplicationHelper
   end
 
   private
-    def locale_segment(locale, first:)
-      label = t("language_short", locale: locale)
-      divider = first ? "" : " border-s-2 border-ink"
-
-      if locale == I18n.locale
-        tag.span label, lang: locale, dir: dir_for(locale), aria: { current: "true" },
-          class: "bg-ink px-2 py-0.5 sm:px-2.5 text-paper#{divider}"
-      else
-        link_to label, locale_path(locale), lang: locale, dir: dir_for(locale),
-          class: "px-2 py-0.5 sm:px-2.5 text-ink/60 hover:bg-hero-yellow hover:text-ink#{divider}"
-      end
-    end
-
     def dir_for(locale)
       locale.to_sym == :ar ? "rtl" : "ltr"
     end
