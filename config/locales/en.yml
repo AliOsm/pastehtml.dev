@@ -15,6 +15,7 @@ en:
     footer_issue: "pastehtml.dev — issue #1"
     switch_language: "Switch language"
     primary_nav: "Primary navigation"
+    dismiss: "Dismiss"
 
   authentication:
     required: "Sign in to continue."
@@ -52,7 +53,7 @@ en:
     edit_short: "Edit"
     created: "Folder created."
     updated: "Folder updated."
-    destroyed: "Folder removed. Pastes moved back to All pastes."
+    destroyed: "Folder deleted. Pastes moved back to All pastes."
     destroy: "Delete folder"
     destroy_confirm: "Delete this folder? Its pastes will not be deleted."
     new:
@@ -158,7 +159,7 @@ en:
   pastes:
     created: "Page published and saved to your dashboard."
     created_anonymous: "Page published. Sign up to organize it in folders and re-upload updates later."
-    updated: "Paste updated. Your share link stayed the same."
+    updated: "Page updated. Your share link stayed the same."
     not_owner: "Only the paste owner can edit it."
     edit:
       title: "Edit %{title}"
@@ -201,7 +202,7 @@ en:
       updated: "updated %{date}"
       views: "%{count} views"
       folder: "in %{folder}"
-      password_protected: "password protected"
+      password_protected: "password-protected"
     share:
       label: "Share link"
       copy: "Copy link"
