@@ -33,6 +33,26 @@ class McpBodyLimitIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :content_too_large
   end
 
+  # ActionDispatch's integration harness normalizes the request path before it is
+  # dispatched, so `post "/oauth//register"` would not actually exercise a
+  # repeated-slash PATH_INFO. Drive the real middleware stack directly with a
+  # crafted env -- the form a raw HTTP client (curl, Cloudflare) can send, which
+  # Rails' router still normalizes and routes -- to prove the guard catches it.
+  test "an oversized repeated-slash DCR request is rejected full-stack" do
+    before = Doorkeeper::Application.count
+
+    status, = call_stack("/oauth//register", oversize_dcr_body)
+
+    assert_equal 413, status
+    assert_equal before, Doorkeeper::Application.count
+  end
+
+  test "an oversized repeated-slash /mcp request is rejected full-stack" do
+    status, = call_stack("//mcp", oversize_mcp_body)
+
+    assert_equal 413, status
+  end
+
   test "a normal DCR body still registers (regression: within-limit body passes through)" do
     post "/oauth/register",
       params: { redirect_uris: [ "http://127.0.0.1:51000/callback" ] }.to_json,
@@ -43,6 +63,19 @@ class McpBodyLimitIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   private
+    # Runs the full Rack middleware stack (McpBodyLimit included) against a raw
+    # env whose PATH_INFO keeps the repeated slash the integration harness would
+    # otherwise normalize away.
+    def call_stack(path_info, body)
+      env = Rack::MockRequest.env_for("/", method: "POST", "CONTENT_TYPE" => "application/json")
+      env["PATH_INFO"] = path_info
+      env["rack.input"] = StringIO.new(body)
+      env["CONTENT_LENGTH"] = body.bytesize.to_s
+      status, _headers, response_body = Rails.application.call(env)
+      response_body.close if response_body.respond_to?(:close)
+      [ status ]
+    end
+
     def oversize_dcr_body
       { redirect_uris: [ "http://127.0.0.1:51000/callback" ], pad: OVERSIZE }.to_json
     end

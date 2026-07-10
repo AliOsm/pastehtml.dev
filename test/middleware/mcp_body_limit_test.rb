@@ -24,9 +24,11 @@ class McpBodyLimitTest < ActiveSupport::TestCase
     assert_equal 413, status
   end
 
-  test "guards the trailing-slash route variants Rails also routes" do
-    assert_equal 413, call("/mcp/", "POST", body: oversize, content_length: :none).first
-    assert_equal 413, call("/oauth/register/", "POST", body: oversize, content_length: :none).first
+  test "guards every slash variant Rails' router normalizes to a protected path" do
+    # Rails routes all of these to the same endpoints, so the guard must too.
+    %w[/mcp/ //mcp /mcp// /oauth/register/ /oauth//register //oauth/register /oauth///register/].each do |path|
+      assert_equal 413, call(path, "POST", body: oversize, content_length: :none).first, "#{path} should be guarded"
+    end
   end
 
   test "passes an at-limit body through and preserves it for downstream" do

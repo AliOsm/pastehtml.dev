@@ -16,9 +16,7 @@ class McpBodyLimit
   # Match the MCP transport's own request ceiling so the two agree.
   MAX_BYTES = 4 * 1024 * 1024
 
-  # Canonical top-level paths; both are unmounted, apex-host routes. Rails routes
-  # the trailing-slash variants (`/mcp/`, `/oauth/register/`) to the same
-  # endpoints, so the guard normalizes a single trailing slash before matching.
+  # Canonical top-level paths; both are unmounted, apex-host routes.
   PROTECTED_PATHS = [ "/mcp", "/oauth/register" ].freeze
 
   def initialize(app)
@@ -49,9 +47,13 @@ class McpBodyLimit
       env["REQUEST_METHOD"] == "POST" && PROTECTED_PATHS.include?(normalized_path(env))
     end
 
+    # Match exactly what Rails' router matches. It normalizes PATH_INFO before
+    # routing -- collapsing repeated slashes and stripping a trailing one -- so
+    # forms like `/oauth//register`, `//mcp`, or `/mcp/` all reach the protected
+    # endpoints. Using the router's own normalization keeps the guard from being
+    # bypassed by any slash variant the router still routes.
     def normalized_path(env)
-      path = env["PATH_INFO"].to_s
-      path.length > 1 ? path.chomp("/") : path
+      ActionDispatch::Journey::Router::Utils.normalize_path(env["PATH_INFO"].to_s)
     end
 
     def declared_oversize?(env)
