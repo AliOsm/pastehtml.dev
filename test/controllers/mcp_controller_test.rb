@@ -301,6 +301,33 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert response.parsed_body.dig("result", "tools").present?, "tools/list should still work with no params"
   end
 
+  test "initialize rejects an object missing its required lifecycle fields" do
+    complete = { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "x", version: "1" } }
+
+    [
+      {},                                              # missing all three
+      complete.except(:clientInfo),                    # missing clientInfo
+      complete.except(:protocolVersion),               # missing protocolVersion
+      complete.except(:capabilities),                  # missing capabilities
+      complete.merge(protocolVersion: 1),              # wrong type
+      complete.merge(clientInfo: "acme")               # wrong type
+    ].each do |params|
+      body = { jsonrpc: "2.0", id: 9, method: "initialize", params: params }.to_json
+      mcp_post(body, token: read_write_token.plaintext_token)
+      assert_equal(-32_602, response.parsed_body.dig("error", "code"), "expected -32602 for initialize params #{params.inspect}")
+    end
+  end
+
+  test "initialize with all required lifecycle fields succeeds" do
+    body = { jsonrpc: "2.0", id: 9, method: "initialize",
+             params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "x", version: "1" } } }.to_json
+
+    mcp_post(body, token: read_write_token.plaintext_token)
+
+    assert_response :ok
+    assert response.parsed_body["result"].present?, "a complete initialize must still handshake"
+  end
+
   # The pre-dispatch check now answers malformed params as -32602, but the
   # boundary sanitizer remains the net for any OTHER -32603 whose data could leak
   # (e.g. a genuine dispatch-time bug). Exercise it directly so it stays covered.

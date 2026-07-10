@@ -272,15 +272,31 @@ class McpController < ActionController::API
     def reject_non_object_params!
       body = mcp_request_body
       return if body.nil? || !body.key?(:id)
-
-      params = body[:params]
-      if PARAMS_REQUIRED_METHODS.include?(body[:method])
-        return if params.is_a?(Hash) # required: missing/null/non-object all invalid
-      else
-        return if params.nil? || params.is_a?(Hash) # optional: only a present non-object is invalid
-      end
+      return if params_acceptable?(body[:method], body[:params])
 
       render json: { jsonrpc: "2.0", id: body[:id], error: { code: -32_602, message: "Invalid params" } }
+    end
+
+    # Whether a request's params satisfy the method's schema shape. Methods in
+    # PARAMS_REQUIRED_METHODS must carry an object; initialize must additionally
+    # carry its three lifecycle fields. Every other method takes an optional
+    # object (a present non-object is still invalid).
+    def params_acceptable?(method, params)
+      return params.nil? || params.is_a?(Hash) unless PARAMS_REQUIRED_METHODS.include?(method)
+      return false unless params.is_a?(Hash)
+      return initialize_params_complete?(params) if method == "initialize"
+
+      true
+    end
+
+    # The MCP lifecycle requires an initialize with protocolVersion (string) plus
+    # capabilities and clientInfo objects. Presence and container type are
+    # checked; inner fields are left to the SDK, so this can't over-reject a
+    # conforming client that shapes those objects differently.
+    def initialize_params_complete?(params)
+      params[:protocolVersion].is_a?(String) &&
+        params[:capabilities].is_a?(Hash) &&
+        params[:clientInfo].is_a?(Hash)
     end
 
     def enforce_tool_scope!
