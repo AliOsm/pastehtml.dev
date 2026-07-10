@@ -50,12 +50,17 @@
           CANONICAL McpOauth::CONFIG[:resource_uri], never the client's
           spelling -- which Doorkeeper's stock form would silently drop
           (RFC 8707 round-trip). %>
-      <%= form_tag oauth_authorization_path, method: :post do %>
+      <%# OAuth completes with a cross-origin redirect to the client's callback
+          (commonly http://localhost:<port> for CLI agents). Turbo would follow
+          that redirect as fetch(), which the callback correctly rejects via
+          CORS, leaving this page apparently stuck. Native form navigation is
+          required for both approval and denial. %>
+      <%= form_tag oauth_authorization_path, method: :post, data: { turbo: false } do %>
         <%= render "authorization_params" %>
         <%= submit_tag t(".authorize"),
               class: "w-full rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90 t-press" %>
       <% end %>
-      <%= form_tag oauth_authorization_path, method: :delete do %>
+      <%= form_tag oauth_authorization_path, method: :delete, data: { turbo: false } do %>
         <%= render "authorization_params" %>
         <%= submit_tag t(".deny"),
               class: "w-full rounded-md border-2 border-ink bg-white px-4 py-2 font-display text-xl tracking-wide text-ink shadow-comic-sm hover:bg-paper t-press" %>
