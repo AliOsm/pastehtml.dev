@@ -29,4 +29,27 @@ class AuthenticationReturnToTest < ActionDispatch::IntegrationTest
 
     assert_nil session[:return_to_after_authenticating]
   end
+
+  # The return-to cap and the DCR redirect_uri cap are aligned: an authorize path
+  # built from the LONGEST redirect_uri registration accepts, plus a normal
+  # state, still fits and resumes -- so no client accepted at registration is
+  # left unable to authenticate.
+  test "a max-length accepted redirect_uri still yields a resumable authorize path" do
+    max_uri_length = Oauth::RegistrationsController::MAX_REDIRECT_URI_LENGTH
+    prefix = "https://client.example.com/"
+    redirect_uri = prefix + ("a" * (max_uri_length - prefix.length))
+    assert_equal max_uri_length, redirect_uri.length, "sanity: exactly the max accepted redirect_uri"
+
+    get "/oauth/authorize", params: {
+      client_id: "c" * 43, redirect_uri: redirect_uri, response_type: "code",
+      scope: "mcp:read mcp:write", state: "s" * 128,
+      code_challenge: "d" * 43, code_challenge_method: "S256",
+      resource: McpOauth::CONFIG[:resource_uri]
+    }
+
+    assert_response :see_other
+    stored = session[:return_to_after_authenticating]
+    assert_not_nil stored, "a max-redirect-uri authorize path must fit and resume"
+    assert_operator stored.bytesize, :<=, Authentication::MAX_RETURN_TO_BYTES
+  end
 end

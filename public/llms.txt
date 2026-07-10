@@ -129,10 +129,14 @@ permanent, so there is no delete-paste tool:
     rename_folder      rename a folder
     delete_folder      delete a folder (its pastes survive, unfiled)
 
-Everything else in this guide -- self-contained documents, the 2 MB limit,
-always showing the user the live_url -- applies equally when publishing over MCP.
-(A whole MCP request is capped at 8 MB, which comfortably fits a 2 MB paste even
-after JSON-string escaping roughly doubles quote/backslash-heavy content.)
+Everything else in this guide -- self-contained documents, the 2 MB paste
+limit, always showing the user the live_url -- applies equally when publishing
+over MCP, with one encoding caveat. A whole MCP request is capped at 8 MB, and a
+paste's content travels as a JSON string, which escaping expands: quotes and
+backslashes double, and some JSON encoders emit six-byte \uXXXX escapes for the
+characters < > &. Typical MCP clients leave < > & raw, so they publish up to the
+full 2 MB comfortably. A client whose encoder escapes < > & should keep a paste
+that is heavy in those characters below ~1.3 MB to stay within the request cap.
 
 ## Publish Markdown
 

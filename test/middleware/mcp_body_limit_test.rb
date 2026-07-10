@@ -52,9 +52,17 @@ class McpBodyLimitTest < ActiveSupport::TestCase
     assert_equal payload.bytesize, body.join.bytesize, "downstream must receive the full body"
   end
 
-  test "ignores non-POST methods and unguarded paths" do
-    assert_equal 200, call("/mcp", "GET", body: over(McpBodyLimit::MCP_MAX_BYTES), content_length: :none).first
+  test "guards a guarded path on any verb, including a body-bearing DELETE" do
+    # DELETE /oauth/authorize is a real Doorkeeper route; a POST-only guard let an
+    # oversized DELETE body through.
+    assert_equal 413, call("/oauth/authorize", "DELETE", body: over(McpBodyLimit::OAUTH_MAX_BYTES), content_length: :none).first
+    # An abnormal oversized GET body on a guarded path is bounded too.
+    assert_equal 413, call("/mcp", "GET", body: over(McpBodyLimit::MCP_MAX_BYTES), content_length: :none).first
+  end
+
+  test "ignores unguarded paths and lets an empty-body request through" do
     assert_equal 200, call("/api/pastes", "POST", body: over(McpBodyLimit::MCP_MAX_BYTES), content_length: :none).first
+    assert_equal 200, call("/mcp", "GET", body: "").first
   end
 
   test "is installed at the front of the application middleware stack" do

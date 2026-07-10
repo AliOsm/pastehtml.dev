@@ -10,11 +10,15 @@ module Authentication
   AUTH_COOKIE_NAME = Rails.env.production? ? "__Host-pastehtml_session_id" : "pastehtml_session_id"
 
   # Cap the post-login return path stored in the (cookie) session. The whole
-  # session must fit in ~4 KB; a very long path -- e.g. an OAuth authorize URL
-  # with a multi-kilobyte `state` -- would raise CookieOverflow and 500 the
-  # sign-in redirect. Above this we skip storing it (login still works; resume
-  # falls back to the default landing page) rather than crash.
-  MAX_RETURN_TO_BYTES = 1500
+  # session must fit in ~4 KB, so this is sized to hold an OAuth authorize path
+  # built from a max-length accepted redirect_uri
+  # (Oauth::RegistrationsController::MAX_REDIRECT_URI_LENGTH) plus a normal state
+  # and the fixed params -- so any client accepted at registration can resume
+  # login -- while staying comfortably within the cookie budget. A path above
+  # this (e.g. a pathologically large `state`) is skipped rather than stored, so
+  # sign-in still works (resume falls back to the default landing page) instead
+  # of raising CookieOverflow and 500ing.
+  MAX_RETURN_TO_BYTES = 2000
 
   included do
     before_action :require_authentication

@@ -37,6 +37,28 @@ module McpTools
     SYNTHETIC_FILENAME = { "html" => "paste.html", "markdown" => "paste.md" }.freeze
     EXTENSION_FOR_FORMAT = { "html" => Paste::HTML_EXTENSION, "markdown" => Paste::MARKDOWN_EXTENSION }.freeze
 
+    # Wraps every tool's `call` so an UNEXPECTED exception never leaks its message
+    # to the client. The SDK embeds a raised exception's message in JSON-RPC error
+    # data, which can expose database/implementation details (e.g. a driver's
+    # "string contains null byte" or a Postgres error). Domain failures already
+    # return structured `failure`/`validation_error` responses and never raise, so
+    # only genuine surprises reach here: they are reported to Rails.error and
+    # returned as one generic, non-revealing tool error. Prepended to each
+    # subclass's singleton (see `inherited`), so `super` reaches the tool's `call`.
+    module ErrorSanitizer
+      def call(*args, **kwargs)
+        super
+      rescue StandardError => e
+        Rails.error.report(e, handled: true, source: "mcp-tool")
+        failure(code: "internal_error", message: "An unexpected error occurred while running this tool.")
+      end
+    end
+
+    def self.inherited(subclass)
+      super
+      subclass.singleton_class.prepend(ErrorSanitizer)
+    end
+
     class << self
       private
 

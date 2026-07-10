@@ -55,9 +55,11 @@ class McpBodyLimit
 
   private
     # The byte ceiling for this request, or nil if the endpoint is not guarded.
+    # Keyed on PATH only, not method: Doorkeeper serves several verbs on the same
+    # OAuth paths (e.g. DELETE /oauth/authorize), and any body-bearing verb -- not
+    # just POST -- can carry an oversized payload. Body-less verbs (GET/HEAD) just
+    # see an empty stream, so guarding them costs nothing.
     def limit_for(env)
-      return nil unless env["REQUEST_METHOD"] == "POST"
-
       path = normalized_path(env)
       return MCP_MAX_BYTES if path == MCP_PATH
       return OAUTH_MAX_BYTES if path.start_with?(OAUTH_PREFIX)

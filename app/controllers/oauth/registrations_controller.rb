@@ -29,9 +29,12 @@ class Oauth::RegistrationsController < ActionController::API
   # per-authorization, so a later step-up never needs a second registration.
   NORMALIZED_SCOPE = ALLOWED_SCOPES.join(" ").freeze
   MAX_REDIRECT_URIS = 10
-  # A generous cap on a single redirect_uri -- real loopback/https callbacks are
-  # well under this; anything longer is abuse, not a legitimate client.
-  MAX_REDIRECT_URI_LENGTH = 2000
+  # Cap on a single redirect_uri. Real loopback/https callbacks are well under
+  # this. It is deliberately kept small enough that an authorization request
+  # built from an accepted redirect_uri (plus a normal state) fits within
+  # Authentication::MAX_RETURN_TO_BYTES, so a client accepted here can always
+  # resume login when the user starts signed out -- see that constant.
+  MAX_REDIRECT_URI_LENGTH = 512
   # Valid TCP port range for an explicit :port in a redirect_uri.
   VALID_PORT_RANGE = (1..65_535)
   MAX_CLIENT_NAME_LENGTH = 255
