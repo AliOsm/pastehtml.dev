@@ -90,32 +90,42 @@ module McpTools
         resolved_filename, filename_error = resolve_filename(format, filename)
         return filename_error if filename_error
 
-        result = nil
-        Paste.transaction do
-          folder, folder_created, folder_error = resolve_or_create_folder(user, folder_id, folder_name)
-          if folder_error
-            result = folder_error
-            raise ActiveRecord::Rollback
-          end
+        # Built before the transaction so the uniqueness-race translation has a
+        # record to attach the error to; the folder is assigned inside.
+        paste = build_paste(user, content, resolved_filename, custom_subdomain, password)
 
-          paste = build_paste(user, content, resolved_filename, folder, custom_subdomain, password)
-          if paste.save
-            result = ok(paste_detail(paste, folder_created: folder_created))
-          else
-            result = validation_error(paste)
-            raise ActiveRecord::Rollback
+        # A concurrent writer can take the same custom_subdomain between our
+        # validation SELECT and the INSERT, raising RecordNotUnique at the DB
+        # layer. Translate it to the same stable tool error the plain-duplicate
+        # path returns; the exception rolls the whole transaction back, so any
+        # auto-created folder is discarded with the paste.
+        translating_uniqueness_race(paste, attribute: :custom_subdomain) do
+          result = nil
+          Paste.transaction do
+            folder, folder_created, folder_error = resolve_or_create_folder(user, folder_id, folder_name)
+            if folder_error
+              result = folder_error
+              raise ActiveRecord::Rollback
+            end
+
+            paste.folder = folder
+            if paste.save
+              result = ok(paste_detail(paste, folder_created: folder_created))
+            else
+              result = validation_error(paste)
+              raise ActiveRecord::Rollback
+            end
           end
+          result
         end
-        result
       end
 
       private
-        def build_paste(user, content, filename, folder, custom_subdomain, password)
+        def build_paste(user, content, filename, custom_subdomain, password)
           paste = Paste.new(
             content: Paste.render_content(content, filename),
             original_filename: filename,
-            user: user,
-            folder: folder
+            user: user
           )
           paste.custom_subdomain = custom_subdomain if custom_subdomain.present?
           paste.password = password if password.present?

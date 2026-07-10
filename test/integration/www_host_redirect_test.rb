@@ -4,16 +4,17 @@ require "test_helper"
 # `*.<apex>` wildcard. OAuth/MCP routes are constrained to the canonical apex
 # host only, so a signed-in user who lands on the www host and clicks a
 # relative app link (e.g. "Connected agents") would otherwise 404. A routes-
-# level 301 folds `www.<apex>` back onto the apex before anything else runs.
+# level 308 folds `www.<apex>` back onto the apex before anything else runs. It
+# is a 308 (not 301) so a POST is redirected without being rewritten to GET.
 class WwwHostRedirectTest < ActionDispatch::IntegrationTest
   APEX = McpOauth::CONFIG[:host]
 
-  test "a request on the www host 301-redirects to the apex, preserving the path" do
+  test "a request on the www host permanently redirects to the apex, preserving the path" do
     host! "www.#{APEX}"
 
     get "/oauth/authorized_applications"
 
-    assert_response :moved_permanently
+    assert_response :permanent_redirect
     assert_equal "http://#{APEX}/oauth/authorized_applications", @response.location
   end
 
@@ -22,7 +23,7 @@ class WwwHostRedirectTest < ActionDispatch::IntegrationTest
 
     get "/oauth/authorized_applications?foo=bar"
 
-    assert_response :moved_permanently
+    assert_response :permanent_redirect
     assert_equal "http://#{APEX}/oauth/authorized_applications?foo=bar", @response.location
   end
 
@@ -31,8 +32,19 @@ class WwwHostRedirectTest < ActionDispatch::IntegrationTest
 
     get "/"
 
-    assert_response :moved_permanently
+    assert_response :permanent_redirect
     assert_equal "http://#{APEX}/", @response.location
+  end
+
+  test "a POST on the www host is redirected with 308, preserving the method" do
+    host! "www.#{APEX}"
+
+    post "/api/pastes", params: { filename: "x.html" }
+
+    # 308 tells the client to replay the POST (with its body) against the apex,
+    # rather than a 301 that browsers may downgrade to GET.
+    assert_response :permanent_redirect
+    assert_equal "http://#{APEX}/api/pastes", @response.location
   end
 
   test "the canonical apex host is not redirected" do
@@ -40,6 +52,7 @@ class WwwHostRedirectTest < ActionDispatch::IntegrationTest
 
     get "/oauth/authorized_applications"
 
+    assert_not_equal 308, @response.status
     assert_not_equal 301, @response.status
   end
 
@@ -49,7 +62,8 @@ class WwwHostRedirectTest < ActionDispatch::IntegrationTest
     get "/"
 
     # An unknown token subdomain 404s through the paste routing; either way it is
-    # never our 301 back to the apex.
+    # never our redirect back to the apex.
+    assert_not_equal 308, @response.status
     assert_not_equal 301, @response.status
   end
 end

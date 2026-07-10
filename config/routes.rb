@@ -37,14 +37,18 @@ Rails.application.routes.draw do
     # OAuth/MCP routes below are constrained to the canonical apex host only, so
     # a signed-in user who reaches the www host and clicks a relative app link
     # (e.g. "Connected agents") would 404. Fold `www.<apex>` back onto the apex
-    # with a 301 before any app route matches -- MUST stay at the TOP of this
-    # block so it wins over `root` and friends. The rule matches only the single
-    # host `www.<canonical-host>`: it leaves the canonical host itself alone even
-    # when that host is literally `www.example.com` (the test apex) or the bare
+    # before any app route matches -- MUST stay at the TOP of this block so it
+    # wins over `root` and friends. It matches ALL verbs, so it uses a 308
+    # (Permanent Redirect), NOT a 301: a client following a 301 is allowed to
+    # rewrite POST to GET and drop the body, which would silently break a
+    # state-changing request (e.g. an API upload) aimed at www; 308 preserves
+    # the method and body. The rule matches only the single host
+    # `www.<canonical-host>`: it leaves the canonical host itself alone even when
+    # that host is literally `www.example.com` (the test apex) or the bare
     # `pastehtml.dev` apex (production). This whole block is the non-paste
     # branch, so paste origins and `*.<apex>` wildcard subdomains never reach it.
     constraints host: "www.#{McpOauth::CONFIG[:host]}" do
-      match "/(*path)", via: :all, to: redirect(status: 301) { |_params, request|
+      match "/(*path)", via: :all, to: redirect(status: 308) { |_params, request|
         apex = McpOauth::CONFIG[:host]
         port = request.standard_port? ? "" : ":#{request.port}"
         "#{request.protocol}#{apex}#{port}#{request.fullpath}"

@@ -131,8 +131,50 @@ class McpTools::CreatePasteTest < ActiveSupport::TestCase
     assert_not @alice.folders.exists?(name: "Doomed")
   end
 
+  # A concurrent writer can take the same custom_subdomain between our validation
+  # SELECT and the INSERT, so paste.save raises RecordNotUnique at the DB layer.
+  # That race must surface as the same stable tool error, not a leaked exception.
+  test "a custom_subdomain uniqueness race returns a stable error, not an exception" do
+    response = simulating_uniqueness_race(Paste, :save) do
+      create(content: "<p>x</p>", format: "html", custom_subdomain: "racy-sub")
+    end
+
+    assert response.error?
+    assert_equal "validation_failed", response.structured_content[:code]
+    assert_equal "custom_subdomain", response.structured_content[:field]
+  end
+
+  test "an auto-created folder is rolled back when a uniqueness race aborts the paste" do
+    assert_no_difference -> { @alice.folders.count } do
+      response = simulating_uniqueness_race(Paste, :save) do
+        create(content: "<p>x</p>", format: "html", custom_subdomain: "racy-sub", folder_name: "Doomed By Race")
+      end
+      assert response.error?
+    end
+
+    assert_not @alice.folders.exists?(name: "Doomed By Race")
+  end
+
   private
     def create(**args)
       McpTools::CreatePaste.call(**args, server_context: @ctx)
+    end
+
+    # Forces the next call to `method` on `klass` to raise RecordNotUnique once,
+    # then restores the original. Mirrors the folder tool tests.
+    def simulating_uniqueness_race(klass, method)
+      defined_here = klass.instance_methods(false).include?(method)
+      original = klass.instance_method(method)
+      raised = false
+      klass.send(:define_method, method) do |*args, **kwargs, &block|
+        unless raised
+          raised = true
+          raise ActiveRecord::RecordNotUnique, "PG::UniqueViolation"
+        end
+        original.bind(self).call(*args, **kwargs, &block)
+      end
+      yield
+    ensure
+      defined_here ? klass.send(:define_method, method, original) : klass.send(:remove_method, method)
     end
 end

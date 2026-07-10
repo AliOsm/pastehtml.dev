@@ -4,20 +4,21 @@
 # Both public endpoints otherwise read the whole body first and cap afterwards:
 # Dynamic Client Registration materializes JSON params (Rails, unbounded size),
 # and the MCP transport reads up to 4 MiB -- but only once the full request has
-# already been received and buffered. This middleware runs at the very front of
-# the stack and rejects a declared-oversize request outright, so a giant body is
-# never parsed or copied by the app.
+# been received. This middleware sits at the very front of the stack and bounds
+# the request itself, so a giant body is never parsed or buffered by the app.
 #
-# It caps the declared Content-Length, which is the normal path for the CLI
-# agents (Claude Code, Codex) that use these endpoints. A body sent with no
-# Content-Length (e.g. chunked transfer) falls through to the transport's own
-# 4 MiB streaming read cap on /mcp and Rails' 100-level nesting limit on the DCR
-# JSON -- so it is defense-in-depth, not the only limit.
+# It bounds the ACTUAL `rack.input` stream rather than trusting the
+# `Content-Length` header, so a chunked, Content-Length-less, or header-lying
+# body is caught just the same. A within-limit body is read into memory and the
+# stream is replaced with a rewound in-memory copy, so Rails param parsing and
+# the MCP transport downstream still see the full, rewindable body.
 class McpBodyLimit
   # Match the MCP transport's own request ceiling so the two agree.
   MAX_BYTES = 4 * 1024 * 1024
 
-  # Exact top-level paths; both are unmounted, apex-host routes.
+  # Canonical top-level paths; both are unmounted, apex-host routes. Rails routes
+  # the trailing-slash variants (`/mcp/`, `/oauth/register/`) to the same
+  # endpoints, so the guard normalizes a single trailing slash before matching.
   PROTECTED_PATHS = [ "/mcp", "/oauth/register" ].freeze
 
   def initialize(app)
@@ -25,14 +26,32 @@ class McpBodyLimit
   end
 
   def call(env)
-    return too_large if guarded?(env) && declared_oversize?(env)
+    return @app.call(env) unless guarded?(env)
 
+    # Fast path: a declared oversize is rejected without reading the body at all.
+    return too_large if declared_oversize?(env)
+
+    input = env["rack.input"]
+    return @app.call(env) if input.nil?
+
+    input.rewind if input.respond_to?(:rewind)
+    # Read one byte past the cap: if anything remains, the body is too large.
+    buffer = input.read(MAX_BYTES + 1) || "".b
+    return too_large if buffer.bytesize > MAX_BYTES
+
+    # Reading consumed the stream, so hand downstream a rewound in-memory copy.
+    env["rack.input"] = StringIO.new(buffer)
     @app.call(env)
   end
 
   private
     def guarded?(env)
-      env["REQUEST_METHOD"] == "POST" && PROTECTED_PATHS.include?(env["PATH_INFO"])
+      env["REQUEST_METHOD"] == "POST" && PROTECTED_PATHS.include?(normalized_path(env))
+    end
+
+    def normalized_path(env)
+      path = env["PATH_INFO"].to_s
+      path.length > 1 ? path.chomp("/") : path
     end
 
     def declared_oversize?(env)
