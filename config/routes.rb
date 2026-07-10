@@ -71,14 +71,24 @@ Rails.application.routes.draw do
     # resource-indicator enforcement onto Doorkeeper's stock endpoints.
     # :applications is skipped (clients arrive via dynamic registration, not
     # an admin UI); :authorized_applications stays -- it's the "connected
-    # agents" screen a later task links up and restyles. /mcp itself, the
-    # well-known discovery documents, and /oauth/register are later tasks.
+    # agents" screen a later task links up and restyles. /mcp itself and
+    # /oauth/register are later tasks.
     constraints host: McpOauth::CONFIG[:host] do
       use_doorkeeper scope: "oauth" do
         controllers authorizations: "oauth/authorizations",
                     tokens: "oauth/tokens"
         skip_controllers :applications
       end
+
+      # RFC 9728 protected resource metadata + RFC 8414 authorization server
+      # metadata -- static discovery JSON MCP clients probe before any login.
+      # The optional /mcp suffix matters: RFC 9728 derives a path-suffixed
+      # metadata URL from a resource URL that has a path component, so a
+      # client that builds the URL from McpOauth::CONFIG[:resource_uri]
+      # (".../mcp") rather than following the WWW-Authenticate pointer asks
+      # for that one.
+      get ".well-known/oauth-protected-resource(/mcp)", to: "well_known#protected_resource"
+      get ".well-known/oauth-authorization-server", to: "well_known#authorization_server"
     end
     get "p/:token", to: "pastes#show", as: :paste
     get "p/:token/password", to: "paste_passwords#new", as: :paste_password
