@@ -63,6 +63,23 @@ Rails.application.routes.draw do
       resources :folders, only: %i[ index create ]
       resources :pastes, only: %i[ create update ], param: :token
     end
+
+    # OAuth authorization server for the MCP endpoint -- apex host ONLY (not
+    # merely "any non-paste host"), so issuer, audience, and cookies collapse
+    # to one canonical origin (prod: pastehtml.dev, dev: localhost, test:
+    # www.example.com). The custom controllers layer mandatory RFC 8707
+    # resource-indicator enforcement onto Doorkeeper's stock endpoints.
+    # :applications is skipped (clients arrive via dynamic registration, not
+    # an admin UI); :authorized_applications stays -- it's the "connected
+    # agents" screen a later task links up and restyles. /mcp itself, the
+    # well-known discovery documents, and /oauth/register are later tasks.
+    constraints host: McpOauth::CONFIG[:host] do
+      use_doorkeeper scope: "oauth" do
+        controllers authorizations: "oauth/authorizations",
+                    tokens: "oauth/tokens"
+        skip_controllers :applications
+      end
+    end
     get "p/:token", to: "pastes#show", as: :paste
     get "p/:token/password", to: "paste_passwords#new", as: :paste_password
     post "p/:token/password", to: "paste_passwords#create"

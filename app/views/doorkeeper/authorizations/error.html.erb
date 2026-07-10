@@ -1,0 +1,14 @@
+<% set_meta_tags title: t(".title"), noindex: true %>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-14">
+  <p class="inline-block w-fit -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+    <%= t(".eyebrow") %>
+  </p>
+  <h1 class="mt-5 font-display text-5xl text-balance text-ink text-kapow sm:text-6xl"><%= t(".title") %></h1>
+
+  <div class="mt-8 rounded-lg border-3 border-ink bg-white p-5 shadow-comic">
+    <p class="text-base text-ink sm:text-sm" dir="ltr">
+      <%= error_response.body[:error_description] %>
+    </p>
+  </div>
+</div>
