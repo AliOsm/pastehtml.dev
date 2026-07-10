@@ -408,10 +408,10 @@ DEPENDENCIES
   commonmarker (~> 2.0)
   cssbundling-rails
   debug
-  doorkeeper (>= 5.9.1)
+  doorkeeper (>= 5.9.1, < 6.0)
   jsbundling-rails
   kamal
-  mcp (~> 0.23)
+  mcp (~> 0.23.0)
   meta-tags (~> 2.23)
   pg (~> 1.1)
   propshaft

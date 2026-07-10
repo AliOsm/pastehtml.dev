@@ -29,6 +29,11 @@ class Oauth::RegistrationsController < ActionController::API
   # per-authorization, so a later step-up never needs a second registration.
   NORMALIZED_SCOPE = ALLOWED_SCOPES.join(" ").freeze
   MAX_REDIRECT_URIS = 10
+  # A generous cap on a single redirect_uri -- real loopback/https callbacks are
+  # well under this; anything longer is abuse, not a legitimate client.
+  MAX_REDIRECT_URI_LENGTH = 2000
+  # Valid TCP port range for an explicit :port in a redirect_uri.
+  VALID_PORT_RANGE = (1..65_535)
   MAX_CLIENT_NAME_LENGTH = 255
   DEFAULT_CLIENT_NAME = "Dynamically registered client"
 
@@ -97,6 +102,9 @@ class Oauth::RegistrationsController < ActionController::API
 
     def validate_redirect_uri!(value)
       raise invalid_redirect_uri("Each redirect_uri must be a string.") unless value.is_a?(String)
+      if value.length > MAX_REDIRECT_URI_LENGTH
+        raise invalid_redirect_uri("redirect_uri exceeds #{MAX_REDIRECT_URI_LENGTH} characters.")
+      end
 
       uri = URI.parse(value)
       raise invalid_redirect_uri("redirect_uri must be an absolute URI: #{value}") unless uri.absolute?
@@ -106,6 +114,13 @@ class Oauth::RegistrationsController < ActionController::API
       scheme = uri.scheme.to_s.downcase
       host = uri.host.to_s.downcase
       raise invalid_redirect_uri("redirect_uri is missing a host: #{value}") if host.blank?
+
+      # URI.parse accepts out-of-range ports (e.g. :99999) without complaint;
+      # reject them explicitly. uri.port is the effective port (an in-range
+      # scheme default when none is given), so this only rejects real garbage.
+      unless VALID_PORT_RANGE.cover?(uri.port)
+        raise invalid_redirect_uri("redirect_uri has an invalid port: #{value}")
+      end
 
       validate_redirect_scheme!(scheme, host, value)
     rescue URI::InvalidURIError

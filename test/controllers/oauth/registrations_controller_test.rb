@@ -192,6 +192,18 @@ class Oauth::RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_invalid_redirect_uri
   end
 
+  test "rejects a numeric but out-of-range port" do
+    # URI.parse happily accepts :99999 (> 65535); the controller must not.
+    register(redirect_uris: [ "http://127.0.0.1:99999/callback" ])
+    assert_invalid_redirect_uri
+  end
+
+  test "rejects a redirect uri longer than the per-uri cap" do
+    long_uri = "https://example.com/#{"a" * Oauth::RegistrationsController::MAX_REDIRECT_URI_LENGTH}"
+    register(redirect_uris: [ long_uri ])
+    assert_invalid_redirect_uri
+  end
+
   # --- Metadata rejections (invalid_client_metadata) ------------------------
 
   test "rejects a non-none token_endpoint_auth_method" do

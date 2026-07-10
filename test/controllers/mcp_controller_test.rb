@@ -22,6 +22,15 @@ class FakeMcpWriteTool < MCP::Tool
   end
 end
 
+class FakeMcpRaisingTool < MCP::Tool
+  tool_name "fake_raise"
+  description "A fake tool that raises, to exercise exception reporting."
+
+  def self.call(**_args)
+    raise "boom"
+  end
+end
+
 class McpControllerTest < ActionDispatch::IntegrationTest
   RESOURCE = McpOauth::CONFIG[:resource_uri]
   CANONICAL_ORIGIN = "http://www.example.com".freeze
@@ -188,7 +197,7 @@ class McpControllerTest < ActionDispatch::IntegrationTest
   # --- Bounded, rewind-safe peek robustness ---------------------------------
 
   test "a deeply nested body reaches the transport's error handling, no exception" do
-    # 80 levels: past the peek's cap (20) and the transport's cap (64), but
+    # 80 levels: past the peek's cap and the transport's cap (both 64), but
     # under Rails' own param-parser nesting limit, so the peek steps aside and
     # the transport returns a JSON-RPC parse error rather than the app 500ing.
     mcp_post(nested_json(80), token: read_write_token.plaintext_token)
@@ -205,6 +214,82 @@ class McpControllerTest < ActionDispatch::IntegrationTest
 
     assert_not_equal 500, response.status
     assert_response :content_too_large
+  end
+
+  # --- Classifier is total: nesting-based gate bypass is closed --------------
+
+  test "a moderately nested write tools/call is still scope-gated (no bypass)" do
+    # ~31 levels: above the peek's OLD cap (20) but within the transport's 64,
+    # so before the alignment fix the peek gave up, the scope gate was skipped,
+    # and the write tool dispatched. Now the peek parses to the transport's
+    # depth, so a read-only token is correctly refused with the 403 step-up.
+    mcp_post(nested_tools_call_body("fake_write", depth: 30), token: read_token.plaintext_token)
+
+    assert_response :forbidden
+    assert_equal "insufficient_scope", response.parsed_body["error"]
+  end
+
+  test "a moderately nested write tools/call still increments the write meter" do
+    token = read_write_token
+    minute_key = "mcp-write-rate:minute:#{@user.id}"
+
+    # Pre-seed at the cap: if the deeply nested body slipped past the peek the
+    # meter would never run and this would 200. It must be rejected instead.
+    with_counting_cache_store(minute_key => WRITE_LIMIT) do
+      mcp_post(nested_tools_call_body("fake_write", depth: 30), token: token.plaintext_token)
+    end
+
+    assert_response :too_many_requests
+  end
+
+  test "a tools/call whose params is not an object does not 500" do
+    body = %({"jsonrpc":"2.0","id":2,"method":"tools/call","params":"not-an-object"})
+
+    mcp_post(body, token: read_write_token.plaintext_token)
+
+    # Previously Hash#dig on the String params raised and 500ed; now the peek
+    # yields no tool name, the gate steps aside, and the transport handles the
+    # malformed call as a JSON-RPC error.
+    assert_not_equal 500, response.status
+  end
+
+  # --- Advertised capabilities match what the server implements -------------
+
+  test "initialize advertises only tools, not prompts/resources/logging" do
+    mcp_post(initialize_body, token: read_write_token.plaintext_token)
+
+    assert_response :ok
+    capabilities = response.parsed_body.dig("result", "capabilities")
+    assert_equal({ "listChanged" => false }, capabilities["tools"])
+    assert_not capabilities.key?("prompts"), "should not advertise prompts"
+    assert_not capabilities.key?("resources"), "should not advertise resources"
+    assert_not capabilities.key?("logging"), "should not advertise logging"
+  end
+
+  # --- SDK exceptions reach Rails error reporting ---------------------------
+
+  test "a tool exception is reported to Rails.error and not swallowed" do
+    McpTools.register(FakeMcpRaisingTool, scope: "mcp:read")
+    reported = []
+    subscriber = Class.new do
+      define_method(:report) do |error, handled:, severity:, source: nil, context: {}|
+        reported << { error: error, source: source, context: context }
+      end
+    end.new
+    Rails.error.subscribe(subscriber)
+
+    mcp_post(tools_call_body("fake_raise"), token: read_token.plaintext_token)
+
+    boom = reported.find { |r| r[:error].is_a?(RuntimeError) && r[:error].message == "boom" }
+    assert boom, "expected the tool exception to be reported to Rails.error"
+    assert_equal "mcp", boom[:source]
+    assert_equal @user.id, boom[:context][:user_id]
+    # The SDK passes the raw request body as context at its call site; it must
+    # never be forwarded, since it can carry a private paste's full content.
+    assert_not boom[:context].key?(:request), "raw request body must not be reported"
+  ensure
+    Rails.error.unsubscribe(subscriber) if subscriber
+    McpTools.deregister(FakeMcpRaisingTool)
   end
 
   # --- Throttled last_used_at bump ------------------------------------------
@@ -340,6 +425,17 @@ class McpControllerTest < ActionDispatch::IntegrationTest
 
     def tools_call_body(name)
       { jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: name, arguments: {} } }.to_json
+    end
+
+    # A valid tools/call whose overall JSON nesting is `depth` levels deep, via a
+    # throwaway padding key, while keeping method/params classifiable. Used to
+    # prove a body deeper than the peek's old cap is still classified now that
+    # the peek shares the transport's nesting bound.
+    def nested_tools_call_body(name, depth:)
+      pad = "1"
+      depth.times { pad = %({"a":#{pad}}) }
+      %({"jsonrpc":"2.0","id":2,"method":"tools/call",) +
+        %("params":{"name":"#{name}","arguments":{}},"_pad":#{pad}})
     end
 
     def nested_json(depth)

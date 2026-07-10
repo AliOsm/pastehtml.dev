@@ -34,10 +34,20 @@ class McpController < ActionController::API
   # pre-dispatch peek honors the same bound so it never becomes a bypass of it.
   MAX_REQUEST_BYTES = MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_REQUEST_BYTES
 
-  # Conservative nesting bound for the peek. Deeper-but-still-parseable bodies
-  # simply cause the peek to step aside (returns nil) and reach the transport,
-  # which applies its own nesting cap.
-  PEEK_MAX_NESTING = 20
+  # The peek MUST use the transport's own nesting bound, not a lower one. If the
+  # peek stopped parsing before the transport did, a body nested between the two
+  # limits would classify as nil here (skipping the scope + rate-limit gates)
+  # yet still parse and DISPATCH in the transport -- a gate bypass. Sharing the
+  # constant guarantees: anything the transport will execute, the peek can
+  # classify; anything too deep for the peek is also too deep for the transport
+  # (rejected there), so it never runs.
+  PEEK_MAX_NESTING = MCP::Server::Transports::StreamableHTTPTransport::MAX_JSON_NESTING
+
+  # Only tools are implemented -- no prompts, resources, or logging, and the
+  # stateless server has no session to push list-change notifications over. The
+  # SDK's default capabilities advertise all of those; declare the real set so
+  # the initialize response does not promise what this server cannot do.
+  SERVER_CAPABILITIES = { tools: { listChanged: false } }.freeze
 
   # Throttle window for the `last_used_at` usage bump below -- heavy agent
   # traffic hits /mcp on every tool call, so writing on every request would be
@@ -60,14 +70,20 @@ class McpController < ActionController::API
       name: "pastehtml",
       version: McpTools::VERSION,
       instructions: McpTools::INSTRUCTIONS,
+      capabilities: SERVER_CAPABILITIES,
       tools: McpTools.for_scopes(token_scopes),
       server_context: { user: current_token_user },
       # Turn on the SDK's server-side result validation so a successful tool
       # result that does not match its declared output_schema is caught here
       # rather than shipped to the agent. Argument validation is already on by
       # the SDK default; error results are exempt (they follow the tool error
-      # contract, not the success schema).
-      configuration: MCP::Configuration.new(validate_tool_call_results: true)
+      # contract, not the success schema). exception_reporter routes tool/
+      # transport exceptions -- which the SDK otherwise turns into JSON-RPC
+      # errors and swallows -- into Rails' error reporter.
+      configuration: MCP::Configuration.new(
+        validate_tool_call_results: true,
+        exception_reporter: method(:report_mcp_exception)
+      )
     )
     transport = MCP::Server::Transports::StreamableHTTPTransport.new(
       server,
@@ -93,6 +109,24 @@ class McpController < ActionController::API
   end
 
   private
+    # --- SDK exception reporting --------------------------------------------
+
+    # The SDK turns tool/transport exceptions into JSON-RPC error responses and,
+    # by default, reports them nowhere (its default reporter is a no-op), so
+    # real bugs stay invisible to Rails' error tracking. Route them to
+    # Rails.error instead. Deliberately DROP the SDK-supplied context: some of
+    # its call sites pass the raw request body (`{ request: body_string }`),
+    # which can contain a private paste's full content and tool arguments. Only
+    # the safe, non-sensitive user id is attached.
+    def report_mcp_exception(exception, _sdk_context)
+      Rails.error.report(
+        exception,
+        handled: true,
+        source: "mcp",
+        context: { user_id: @current_access_token&.resource_owner_id }
+      )
+    end
+
     # --- Step 1: Origin guard ------------------------------------------------
 
     # Absent Origin is the normal case for CLI agents and passes. A present
@@ -168,12 +202,21 @@ class McpController < ActionController::API
       return if body.nil?
       return unless body[:method] == "tools/call"
 
-      required = McpTools.required_scope(body.dig(:params, :name))
-      # Unknown tool (nil) falls through so the SDK answers "unknown tool"; a
-      # scope the token already holds is fine.
+      required = McpTools.required_scope(requested_tool_name(body))
+      # Unknown/unclassifiable tool (nil) falls through so the SDK answers
+      # "unknown tool"; a scope the token already holds is fine.
       return if required.nil? || token_scopes.include?(required)
 
       challenge_insufficient_scope
+    end
+
+    # The tool name from a tools/call body, or nil when params is missing or not
+    # an object. Guards against a malformed `"params": "not-an-object"` (String)
+    # -- Hash#dig would raise a TypeError on the String and 500 the request;
+    # returning nil lets the transport reject the malformed call cleanly.
+    def requested_tool_name(body)
+      params = body[:params]
+      params.is_a?(Hash) ? params[:name] : nil
     end
 
     def challenge_insufficient_scope
@@ -187,7 +230,7 @@ class McpController < ActionController::API
       body = mcp_request_body
       return if body.nil?
       return unless body[:method] == "tools/call"
-      return unless McpTools.required_scope(body.dig(:params, :name)) == McpTools::WRITE_SCOPE
+      return unless McpTools.required_scope(requested_tool_name(body)) == McpTools::WRITE_SCOPE
 
       user_id = current_token_user&.id
       return if user_id.nil?
@@ -199,6 +242,8 @@ class McpController < ActionController::API
       # only touched if the first passed. In the test env the cache is a
       # null_store whose `increment` returns nil, so this is a no-op unless a
       # real counter is injected (see the controller test).
+      # NOTE the write tool is identified via requested_tool_name (nil-safe),
+      # not dig, for the same malformed-params reason as enforce_tool_scope!.
       return render_rate_limited unless under_write_limit?(write_rate_key("minute", user_id), WRITE_LIMIT_PER_MINUTE, 1.minute)
       render_rate_limited unless under_write_limit?(write_rate_key("day", user_id), WRITE_LIMIT_PER_DAY, 1.day)
     end
