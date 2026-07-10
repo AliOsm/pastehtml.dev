@@ -310,7 +310,10 @@ class McpControllerTest < ActionDispatch::IntegrationTest
       complete.except(:protocolVersion),               # missing protocolVersion
       complete.except(:capabilities),                  # missing capabilities
       complete.merge(protocolVersion: 1),              # wrong type
-      complete.merge(clientInfo: "acme")               # wrong type
+      complete.merge(clientInfo: "acme"),              # wrong type
+      complete.merge(clientInfo: {}),                  # clientInfo missing name/version
+      complete.merge(clientInfo: { name: "x" }),       # clientInfo missing version
+      complete.merge(clientInfo: { name: "x", version: 2 }) # version wrong type
     ].each do |params|
       body = { jsonrpc: "2.0", id: 9, method: "initialize", params: params }.to_json
       mcp_post(body, token: read_write_token.plaintext_token)

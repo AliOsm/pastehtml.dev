@@ -289,14 +289,20 @@ class McpController < ActionController::API
       true
     end
 
-    # The MCP lifecycle requires an initialize with protocolVersion (string) plus
-    # capabilities and clientInfo objects. Presence and container type are
-    # checked; inner fields are left to the SDK, so this can't over-reject a
-    # conforming client that shapes those objects differently.
+    # The MCP lifecycle requires an initialize with protocolVersion (string),
+    # a capabilities object, and a clientInfo Implementation carrying string
+    # `name` and `version` fields. Optional fields (e.g. clientInfo.title) are
+    # left alone, so a conforming client is never over-rejected.
     def initialize_params_complete?(params)
       params[:protocolVersion].is_a?(String) &&
         params[:capabilities].is_a?(Hash) &&
-        params[:clientInfo].is_a?(Hash)
+        valid_client_info?(params[:clientInfo])
+    end
+
+    def valid_client_info?(client_info)
+      client_info.is_a?(Hash) &&
+        client_info[:name].is_a?(String) &&
+        client_info[:version].is_a?(String)
     end
 
     def enforce_tool_scope!
