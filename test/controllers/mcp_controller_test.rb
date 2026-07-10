@@ -191,6 +191,68 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_response :content_too_large
   end
 
+  # --- Throttled last_used_at bump ------------------------------------------
+
+  test "a successful request sets last_used_at when it was nil" do
+    token = read_write_token
+    assert_nil token.last_used_at
+
+    travel_to Time.current do
+      mcp_post(initialize_body, token: token.plaintext_token)
+    end
+
+    assert_response :ok
+    assert_in_delta Time.current.to_f, token.reload.last_used_at.to_f, 2
+  end
+
+  test "a second request within the throttle window does not change last_used_at" do
+    token = read_write_token
+
+    first_time = Time.current
+    travel_to(first_time) { mcp_post(initialize_body, token: token.plaintext_token) }
+    first_last_used_at = token.reload.last_used_at
+
+    travel_to(first_time + 5.minutes) { mcp_post(initialize_body, token: token.plaintext_token) }
+
+    assert_equal first_last_used_at, token.reload.last_used_at
+  end
+
+  test "a request after the throttle window elapses bumps last_used_at" do
+    token = read_write_token
+
+    first_time = Time.current
+    travel_to(first_time) { mcp_post(initialize_body, token: token.plaintext_token) }
+    first_last_used_at = token.reload.last_used_at
+
+    later = first_time + 16.minutes
+    travel_to(later) { mcp_post(initialize_body, token: token.plaintext_token) }
+
+    assert_operator token.reload.last_used_at, :>, first_last_used_at
+    assert_in_delta later.to_f, token.last_used_at.to_f, 2
+  end
+
+  test "failed authentication bumps nothing" do
+    token = read_write_token
+    assert_nil token.last_used_at
+
+    mcp_post(initialize_body, token: "not-a-real-token")
+
+    assert_response :unauthorized
+    # The real token was never presented, so authenticate_token! never ran the
+    # bump for it -- it must remain untouched by this unrelated failed request.
+    assert_nil token.reload.last_used_at
+  end
+
+  test "a revoked token's failed authentication does not bump last_used_at" do
+    token = read_write_token
+    token.update!(revoked_at: Time.current)
+
+    mcp_post(initialize_body, token: token.plaintext_token)
+
+    assert_response :unauthorized
+    assert_nil token.reload.last_used_at
+  end
+
   # --- Write rate limit -----------------------------------------------------
 
   test "the 21st write tools/call in a minute is rate limited" do

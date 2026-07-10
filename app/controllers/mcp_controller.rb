@@ -39,6 +39,11 @@ class McpController < ActionController::API
   # which applies its own nesting cap.
   PEEK_MAX_NESTING = 20
 
+  # Throttle window for the `last_used_at` usage bump below -- heavy agent
+  # traffic hits /mcp on every tool call, so writing on every request would be
+  # one UPDATE per request. nil counts as stale (first use).
+  LAST_USED_AT_STALE_AFTER = 15.minutes
+
   # Write-tool budget per token-owning user, mirroring the REST API's paste
   # limits -- pastes can never be deleted, so unmetered writes are unbounded
   # storage growth.
@@ -116,6 +121,21 @@ class McpController < ActionController::API
       end
 
       @current_access_token = access_token
+      # Bump usage tracking only on the successful-auth path -- never for the
+      # failure branches above (nothing to bump: no accessible token).
+      bump_last_used_at!(access_token)
+    end
+
+    # Throttled usage tracking driving the nightly OauthCleanupJob's inactivity
+    # window. Mirrors ApiKey#mark_used! (update_columns: no validations, no
+    # callbacks) but skips the write entirely unless the existing value is
+    # stale by more than LAST_USED_AT_STALE_AFTER -- nil (never used) counts as
+    # stale so the very first request always records a value.
+    def bump_last_used_at!(access_token)
+      last_used_at = access_token.last_used_at
+      return if last_used_at.present? && last_used_at > LAST_USED_AT_STALE_AFTER.ago
+
+      access_token.update_columns(last_used_at: Time.current)
     end
 
     def mcp_scoped?(access_token)
