@@ -8,6 +8,7 @@ en:
     skip_to_content: "Skip to content"
     dashboard: "Dashboard"
     api_keys: "API keys"
+    connected_agents: "Connected agents"
     sign_in: "Sign in"
     sign_up: "Sign up"
     sign_out: "Sign out"
@@ -94,6 +95,23 @@ en:
     meta:
       created: "created %{date}"
       default_folder: "default folder: %{folder}"
+      last_used: "last used %{date}"
+      never_used: "never used"
+
+  connected_agents:
+    title: "Connected agents"
+    eyebrow: "MCP access"
+    heading: "Connected agents"
+    body: "Agents like Claude Code and Codex connect here through OAuth to act as your account. Revoke access any time — it takes effect immediately."
+    back: "Back to dashboard"
+    revoked: "Access revoked."
+    scopes_heading: "Can:"
+    revoke: "Revoke access"
+    revoke_confirm: "Revoke this agent's access? It will stop working immediately."
+    empty_title: "No agents connected"
+    empty_body: "No agents connected yet. When you authorize an agent like Claude Code or Codex, it will appear here."
+    meta:
+      registered: "connected %{date}"
       last_used: "last used %{date}"
       never_used: "never used"
 

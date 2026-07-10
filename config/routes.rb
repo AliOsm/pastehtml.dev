@@ -71,12 +71,14 @@ Rails.application.routes.draw do
     # resource-indicator enforcement onto Doorkeeper's stock endpoints.
     # :applications is skipped (clients arrive via dynamic registration, not
     # an admin UI); :authorized_applications stays -- it's the "connected
-    # agents" screen a later task links up and restyles. /mcp itself and
-    # /oauth/register are later tasks.
+    # agents" screen, restyled by its own controller/view like the
+    # authorizations consent screen. /mcp itself and /oauth/register are
+    # later tasks.
     constraints host: McpOauth::CONFIG[:host] do
       use_doorkeeper scope: "oauth" do
         controllers authorizations: "oauth/authorizations",
-                    tokens: "oauth/tokens"
+                    tokens: "oauth/tokens",
+                    authorized_applications: "oauth/authorized_applications"
         skip_controllers :applications
       end
 
