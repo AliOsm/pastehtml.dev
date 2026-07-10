@@ -107,6 +107,22 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_invalid_token
   end
 
+  test "POST /oauth/revoke kills a token immediately, even for a public client with no secret" do
+    token = read_write_token
+    plaintext = token.plaintext_token
+
+    mcp_post(initialize_body, token: plaintext)
+    assert_response :ok
+
+    # mcp_client is a public client (secret: null) -- RFC 7009 revocation
+    # must still work with just client_id, no client_secret.
+    post "/oauth/revoke", params: { token: plaintext, client_id: @application.uid }
+    assert_response :ok
+
+    mcp_post(initialize_body, token: plaintext)
+    assert_invalid_token
+  end
+
   test "an expired token yields error=invalid_token" do
     token = read_write_token
     # expires_in is 1 hour; backdating creation puts expiry in the past.

@@ -10,30 +10,37 @@
 # JSON documents, and audience validation all read from McpOauth::CONFIG, so
 # its shape is load-bearing -- don't change the keys without updating those.
 module McpOauth
-  default_issuer =
-    case Rails.env
-    when "production"
-      "https://pastehtml.dev"
-    when "test"
-      # Matches Rails' integration-test default host so route constraints
-      # keyed on CONFIG[:host] work in tests.
-      "http://www.example.com"
-    else
-      "http://localhost:3000"
-    end
+  # Pure derivation, extracted so tests can exercise the per-env branches
+  # (e.g. the §6.0 dev config) without reloading this initializer -- CONFIG
+  # below is built by calling this with the real Rails.env/ENV at boot.
+  def self.build_config(env:, env_vars:)
+    default_issuer =
+      case env
+      when "production"
+        "https://pastehtml.dev"
+      when "test"
+        # Matches Rails' integration-test default host so route constraints
+        # keyed on CONFIG[:host] work in tests.
+        "http://www.example.com"
+      else
+        "http://localhost:3000"
+      end
 
-  issuer = (ENV["MCP_OAUTH_ISSUER"].presence || default_issuer).freeze
+    issuer = (env_vars["MCP_OAUTH_ISSUER"].presence || default_issuer).freeze
 
-  default_host = URI(issuer).host
+    default_host = URI(issuer).host
 
-  host = (ENV["MCP_OAUTH_HOST"].presence || default_host).freeze
+    host = (env_vars["MCP_OAUTH_HOST"].presence || default_host).freeze
 
-  CONFIG = {
-    issuer: issuer,
-    resource_uri: "#{issuer}/mcp".freeze,
-    host: host,
-    protected_resource_metadata_url: "#{issuer}/.well-known/oauth-protected-resource".freeze
-  }.freeze
+    {
+      issuer: issuer,
+      resource_uri: "#{issuer}/mcp".freeze,
+      host: host,
+      protected_resource_metadata_url: "#{issuer}/.well-known/oauth-protected-resource".freeze
+    }.freeze
+  end
+
+  CONFIG = build_config(env: Rails.env, env_vars: ENV).freeze
 
   # Loopback hosts for which RFC 8252 §7.3 permits plain-http redirect URIs on
   # any port -- native/CLI agents (Claude Code, Codex) receive their
