@@ -123,6 +123,43 @@ diagrams). The stored paste is HTML, so the response shape is identical to an
 HTML publish. Raw HTML embedded in the Markdown is dropped — upload plain HTML
 for arbitrary markup.
 
+## MCP server (OAuth, no API key)
+
+A coding agent that speaks the Model Context Protocol can skip the HTTP API
+above and connect to the remote MCP server at `https://pastehtml.dev/mcp`
+(Streamable HTTP). It authorizes over OAuth in the user's browser — there is no
+`pht_` key to handle.
+
+    claude mcp add --transport http pastehtml https://pastehtml.dev/mcp   # Claude Code
+    codex mcp add pastehtml --url https://pastehtml.dev/mcp               # Codex
+
+The first connection opens a browser consent screen; once approved, the agent
+acts inside that account. Auth is OAuth 2.1 + PKCE with Dynamic Client
+Registration (no client secret); scopes are `mcp:read` and `mcp:write`; the user
+inspects and revokes agents under "Connected agents". Ten tools are exposed —
+pastes are permanent, so there is deliberately no delete-paste tool:
+
+- `create_paste` — publish a new HTML or Markdown paste (optionally into a folder)
+- `update_paste` — republish an existing paste's content (overwrites it)
+- `configure_paste` — change a paste's password, custom subdomain, or folder
+- `get_paste` — fetch one paste's metadata, URLs, and stored content
+- `get_paste_stats` — aggregate view analytics for a paste
+- `list_pastes` — page through the account's pastes (optionally by folder)
+- `list_folders` — list folders with their paste counts
+- `create_folder` — create a new, empty folder
+- `rename_folder` — rename a folder
+- `delete_folder` — delete a folder (its pastes survive, unfiled)
+
+Everything in this reference — the 2 MB content limit, self-contained
+documents, always surfacing the `live_url` — applies equally over MCP, with one
+encoding caveat: a whole MCP request is capped at 8 MB, and paste content travels
+as a JSON string. Escaping expands it (quotes/backslashes double; some encoders
+emit six-byte `\uXXXX` escapes for `<`, `>`, `&`). Typical clients leave `<`, `>`,
+`&` raw and publish the full 2 MB comfortably; a client whose encoder escapes them
+should keep such character-heavy content below ~1.3 MB to stay under the cap.
+Operators can disable open Dynamic Client Registration with the
+`MCP_DYNAMIC_REGISTRATION_DISABLED` environment variable.
+
 ## Limits & rules
 
 - File: `.html`, `.htm`, `.md`, `.markdown`; UTF-8; at most 2 MB.

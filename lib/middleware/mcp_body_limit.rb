@@ -1,5 +1,7 @@
-# Rejects oversized POST bodies to the public MCP and OAuth endpoints before any
-# downstream middleware, Rails param parsing, or the MCP transport reads them.
+# Rejects oversized request bodies to the public MCP and OAuth endpoints before
+# any downstream middleware, Rails param parsing, or the MCP transport reads
+# them. The cap is keyed on the request path, so it applies to every verb those
+# endpoints serve (POST, and also e.g. DELETE /oauth/authorize), not just POST.
 #
 # These endpoints otherwise read the whole body first and cap afterwards: the
 # OAuth endpoints (/oauth/token, /oauth/authorize, /oauth/revoke, /oauth/

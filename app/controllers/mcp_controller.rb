@@ -32,7 +32,9 @@ class McpController < ActionController::API
 
   # The request ceiling for /mcp, shared with the front-of-stack McpBodyLimit so
   # the transport, the pre-dispatch peek, and the middleware all agree. Sized to
-  # fit a 2 MB paste after JSON-string escaping (see McpBodyLimit::MCP_MAX_BYTES).
+  # fit a full 2 MB paste for typical clients; a client whose JSON encoder emits
+  # six-byte \uXXXX escapes for < > & may not fit content dominated by those
+  # characters (see the encoding caveat in public/llms.txt and McpBodyLimit).
   MAX_REQUEST_BYTES = McpBodyLimit::MCP_MAX_BYTES
 
   # The peek MUST use the transport's own nesting bound, not a lower one. If the
@@ -100,7 +102,16 @@ class McpController < ActionController::API
     status, headers, body = transport.handle_request(request)
     headers.each { |key, value| response.headers[key] = value }
 
-    if body.nil? || (body.respond_to?(:empty?) && body.empty?)
+    sanitized = sanitize_internal_error_body(body, response.headers["Content-Type"])
+
+    if sanitized
+      # A JSON-RPC internal error whose `data` carried a raw exception message
+      # (from SDK-level validation/dispatch, outside the per-tool wrapper) --
+      # replaced with a leak-free copy. Content-Length must track the new body.
+      response.headers["Content-Length"] = sanitized.bytesize.to_s
+      self.status = status
+      self.response_body = [ sanitized ]
+    elsif body.nil? || (body.respond_to?(:empty?) && body.empty?)
       # An accepted notification is 202 with a truly empty body -- never a
       # literal JSON "null" or "{}". `head` renders no body.
       head status
@@ -113,6 +124,48 @@ class McpController < ActionController::API
   end
 
   private
+    # --- JSON-RPC boundary error sanitizing ----------------------------------
+
+    # The SDK wraps any exception raised during request validation/dispatch --
+    # BEFORE a request reaches a tool, so outside BaseTool's per-tool wrapper --
+    # into a -32603 "Internal error" whose `data` holds the raw Ruby message
+    # (e.g. array `params` -> "no implicit conversion of Symbol into Integer").
+    # Strip that `data` at the boundary so implementation details never ship.
+    # Returns the rewritten JSON string when it changed anything, else nil (the
+    # untouched body is passed through). Only JSON responses are inspected;
+    # SSE/empty bodies are left alone.
+    def sanitize_internal_error_body(body, content_type)
+      return nil unless content_type.to_s.include?("application/json")
+      return nil unless body.respond_to?(:each)
+
+      raw = +""
+      body.each { |part| raw << part.to_s }
+      return nil if raw.empty?
+
+      parsed = JSON.parse(raw)
+      changed = redact_internal_error!(parsed)
+      changed ? JSON.generate(parsed) : nil
+    rescue JSON::ParserError
+      nil
+    end
+
+    # Drops `data` from a -32603 error object, in a single response or a batch
+    # array. Returns whether anything was redacted.
+    def redact_internal_error!(parsed)
+      case parsed
+      when Array
+        parsed.map { |element| redact_internal_error!(element) }.any?
+      when Hash
+        error = parsed["error"]
+        return false unless error.is_a?(Hash) && error["code"] == -32_603 && error.key?("data")
+
+        error.delete("data")
+        true
+      else
+        false
+      end
+    end
+
     # --- SDK exception reporting --------------------------------------------
 
     # The SDK turns tool/transport exceptions into JSON-RPC error responses and,

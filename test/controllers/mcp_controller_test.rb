@@ -255,6 +255,22 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_not_equal 500, response.status
   end
 
+  test "a tools/call with array params returns an error with no leaked exception data" do
+    # JSON-RPC permits array params. The SDK's dispatch (outside the per-tool
+    # wrapper) raises a TypeError indexing the array by a symbol and embeds the
+    # raw message in the error `data`; the boundary sanitizer strips it.
+    body = %({"jsonrpc":"2.0","id":7,"method":"tools/call","params":[1,2,3]})
+
+    mcp_post(body, token: read_write_token.plaintext_token)
+
+    assert_not_equal 500, response.status
+    error = response.parsed_body["error"]
+    assert_equal(-32_603, error["code"])
+    assert_not error.key?("data"), "raw exception data must be stripped at the JSON-RPC boundary"
+    assert_not_includes response.body, "no implicit conversion"
+    assert_not_includes response.body, "Symbol into Integer"
+  end
+
   # --- Advertised capabilities match what the server implements -------------
 
   test "initialize advertises only tools, not prompts/resources/logging" do
