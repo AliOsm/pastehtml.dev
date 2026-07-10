@@ -30,9 +30,10 @@ class McpController < ActionController::API
   # (scope oscillation).
   CHALLENGE_SCOPE = "#{McpTools::READ_SCOPE} #{McpTools::WRITE_SCOPE}".freeze
 
-  # The transport reads at most this many bytes before rejecting (4 MiB); the
-  # pre-dispatch peek honors the same bound so it never becomes a bypass of it.
-  MAX_REQUEST_BYTES = MCP::Server::Transports::StreamableHTTPTransport::DEFAULT_MAX_REQUEST_BYTES
+  # The request ceiling for /mcp, shared with the front-of-stack McpBodyLimit so
+  # the transport, the pre-dispatch peek, and the middleware all agree. Sized to
+  # fit a 2 MB paste after JSON-string escaping (see McpBodyLimit::MCP_MAX_BYTES).
+  MAX_REQUEST_BYTES = McpBodyLimit::MCP_MAX_BYTES
 
   # The peek MUST use the transport's own nesting bound, not a lower one. If the
   # peek stopped parsing before the transport did, a body nested between the two
@@ -90,7 +91,10 @@ class McpController < ActionController::API
       stateless: true,
       # The transport's default Host allowlist is loopback-only, so production
       # (and the test host) would 403 without this. Origin is validated above.
-      allowed_hosts: [ McpOauth::CONFIG[:host] ]
+      allowed_hosts: [ McpOauth::CONFIG[:host] ],
+      # Raise the transport's own body ceiling to match the middleware and the
+      # peek, so a legitimate 2 MB paste (JSON-escaped) is not rejected here.
+      max_request_bytes: MAX_REQUEST_BYTES
     )
 
     status, headers, body = transport.handle_request(request)

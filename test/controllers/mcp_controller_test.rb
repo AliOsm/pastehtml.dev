@@ -206,7 +206,9 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_response :bad_request
   end
 
-  test "an oversized body reaches the transport's oversize handling, no 500" do
+  test "an oversized body is rejected with 413, no 500" do
+    # Past the shared /mcp ceiling, so the front-of-stack McpBodyLimit rejects it
+    # (the transport's own cap is the same value, a defense-in-depth backstop).
     filler = "a" * (McpController::MAX_REQUEST_BYTES + 128)
     body = %({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"filler":"#{filler}"}})
 

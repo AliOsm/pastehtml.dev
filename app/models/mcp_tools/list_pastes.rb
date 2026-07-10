@@ -4,6 +4,10 @@ module McpTools
   # the byte size is projected instead via the with_content_size scope.
   class ListPastes < BaseTool
     PAGE_SIZE = 20
+    # Upper bound on the 1-based page number. Far beyond any real paste count,
+    # and small enough that (MAX_PAGE - 1) * PAGE_SIZE stays well within a
+    # Postgres bigint OFFSET.
+    MAX_PAGE = 1_000_000
 
     tool_name "list_pastes"
     description <<~TEXT.strip
@@ -18,7 +22,7 @@ module McpTools
       properties: {
         folder_id: { type: "integer", description: "Optional: only pastes in this folder." },
         folder_name: { type: "string", description: "Optional: only pastes in the folder with this name (case-insensitive)." },
-        page: { type: "integer", minimum: 1, description: "1-based page number; page size is fixed at #{PAGE_SIZE}." }
+        page: { type: "integer", minimum: 1, maximum: MAX_PAGE, description: "1-based page number; page size is fixed at #{PAGE_SIZE}." }
       },
       required: [],
       additionalProperties: false
@@ -80,8 +84,12 @@ module McpTools
 
       private
         def normalize_page(page)
-          page = page.to_i
-          page < 1 ? 1 : page
+          # Clamp to a sane range. An unbounded page reaches Postgres as an
+          # OFFSET of (page - 1) * PAGE_SIZE; a huge value overflows bigint and
+          # raises PG::NumericValueOutOfRange, whose message the MCP gem would
+          # surface to the client. MAX_PAGE keeps the offset comfortably in range
+          # (and is far beyond any real paste count).
+          page.to_i.clamp(1, MAX_PAGE)
         end
 
         def page_of(scope, page)

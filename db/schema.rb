@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_10_091356) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_10_154513) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -51,6 +51,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_091356) do
     t.datetime "revoked_at"
     t.string "scopes", default: "", null: false
     t.string "token", null: false
+    t.index ["application_id"], name: "index_oauth_access_grants_active_by_application", where: "(revoked_at IS NULL)"
     t.index ["application_id"], name: "index_oauth_access_grants_on_application_id"
     t.index ["resource_owner_id"], name: "index_oauth_access_grants_on_resource_owner_id"
     t.index ["token"], name: "index_oauth_access_grants_on_token", unique: true
@@ -67,6 +68,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_091356) do
     t.datetime "revoked_at"
     t.string "scopes"
     t.string "token", null: false
+    t.index ["application_id"], name: "index_oauth_access_tokens_active_by_application", where: "(revoked_at IS NULL)"
     t.index ["application_id"], name: "index_oauth_access_tokens_on_application_id"
     t.index ["refresh_token"], name: "index_oauth_access_tokens_on_refresh_token", unique: true
     t.index ["resource_owner_id"], name: "index_oauth_access_tokens_on_resource_owner_id"
@@ -83,6 +85,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_10_091356) do
     t.string "secret"
     t.string "uid", null: false
     t.datetime "updated_at", null: false
+    t.index ["dynamic", "created_at"], name: "index_oauth_applications_on_dynamic_and_created_at"
     t.index ["uid"], name: "index_oauth_applications_on_uid", unique: true
   end
 

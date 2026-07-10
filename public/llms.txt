@@ -131,6 +131,8 @@ permanent, so there is no delete-paste tool:
 
 Everything else in this guide -- self-contained documents, the 2 MB limit,
 always showing the user the live_url -- applies equally when publishing over MCP.
+(A whole MCP request is capped at 8 MB, which comfortably fits a 2 MB paste even
+after JSON-string escaping roughly doubles quote/backslash-heavy content.)
 
 ## Publish Markdown
 

@@ -98,6 +98,25 @@ class McpTools::ListPastesTest < ActiveSupport::TestCase
     assert summary[:content_bytes].positive?
   end
 
+  test "an absurdly large page is clamped instead of overflowing the SQL offset" do
+    # Without clamping this reaches Postgres as an out-of-range bigint OFFSET and
+    # raises PG::NumericValueOutOfRange, whose message the MCP gem would leak.
+    response = list(page: 10**18)
+
+    assert_not response.error?, "a huge page must not raise; it should clamp and return empty"
+    assert_equal McpTools::ListPastes::MAX_PAGE, response.structured_content[:page]
+    assert_empty response.structured_content[:pastes]
+  end
+
+  test "a non-positive page is normalized to the first page" do
+    create_paste_for(@alice, "<p>x</p>")
+
+    response = list(page: -5)
+
+    assert_not response.error?
+    assert_equal 1, response.structured_content[:page]
+  end
+
   private
     def list(**args)
       McpTools::ListPastes.call(**args, server_context: @ctx)

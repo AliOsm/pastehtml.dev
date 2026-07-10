@@ -9,6 +9,13 @@ module Authentication
   # __Host- prefix makes browsers reject Domain-scoped variants.
   AUTH_COOKIE_NAME = Rails.env.production? ? "__Host-pastehtml_session_id" : "pastehtml_session_id"
 
+  # Cap the post-login return path stored in the (cookie) session. The whole
+  # session must fit in ~4 KB; a very long path -- e.g. an OAuth authorize URL
+  # with a multi-kilobyte `state` -- would raise CookieOverflow and 500 the
+  # sign-in redirect. Above this we skip storing it (login still works; resume
+  # falls back to the default landing page) rather than crash.
+  MAX_RETURN_TO_BYTES = 1500
+
   included do
     before_action :require_authentication
     helper_method :authenticated?, :current_user
@@ -42,7 +49,9 @@ module Authentication
     end
 
     def request_authentication
-      session[:return_to_after_authenticating] = request.fullpath if request.request_method == "GET"
+      if request.get? && request.fullpath.bytesize <= MAX_RETURN_TO_BYTES
+        session[:return_to_after_authenticating] = request.fullpath
+      end
       # 303 so an unauthenticated PATCH/DELETE (folders, api keys, sign-out, owned
       # paste updates) follows to sign-in as a GET instead of replaying the verb
       # against the GET-only /session/new.

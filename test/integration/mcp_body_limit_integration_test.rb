@@ -4,7 +4,8 @@ require "test_helper"
 # entire Rails middleware stack and router must be rejected before the endpoint
 # parses it, on both the canonical paths and their trailing-slash variants.
 class McpBodyLimitIntegrationTest < ActionDispatch::IntegrationTest
-  OVERSIZE = ("a" * (McpBodyLimit::MAX_BYTES + 2048)).freeze
+  OVERSIZE_OAUTH = ("a" * (McpBodyLimit::OAUTH_MAX_BYTES + 2048)).freeze
+  OVERSIZE_MCP = ("a" * (McpBodyLimit::MCP_MAX_BYTES + 2048)).freeze
   JSON_HEADERS = { "Content-Type" => "application/json" }.freeze
 
   test "an oversized DCR body is rejected with 413 before registration" do
@@ -14,6 +15,28 @@ class McpBodyLimitIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_response :content_too_large
     assert_equal before, Doorkeeper::Application.count, "no application should be created"
+  end
+
+  test "an oversized /oauth/token body is rejected with 413 before form parsing" do
+    post "/oauth/token", params: { grant_type: "authorization_code", pad: OVERSIZE_OAUTH }.to_json, headers: JSON_HEADERS
+
+    assert_response :content_too_large
+  end
+
+  test "a 2 MB paste that JSON-escapes past the old 4 MB limit publishes through MCP" do
+    token = mint_token
+    # A full 2 MiB of quote characters -- the maximum valid paste content. Each
+    # byte escapes to \" in JSON, so the request serializes to just over 4 MiB:
+    # rejected by the old 4 MiB ceiling, accepted under the raised /mcp ceiling.
+    content = '"' * Paste::MAX_CONTENT_BYTES
+    body = { jsonrpc: "2.0", id: 1, method: "tools/call",
+             params: { name: "create_paste", arguments: { content: content, format: "html" } } }.to_json
+    assert_operator body.bytesize, :>, 4 * 1024 * 1024, "sanity: the request exceeds the old 4 MB limit"
+
+    post "/mcp", params: body, headers: JSON_HEADERS.merge("Authorization" => "Bearer #{token.plaintext_token}")
+
+    assert_response :ok
+    assert response.parsed_body.dig("result", "structuredContent", "token").present?, "the paste should be created"
   end
 
   test "an oversized DCR body on the trailing-slash route is also rejected" do
@@ -77,11 +100,11 @@ class McpBodyLimitIntegrationTest < ActionDispatch::IntegrationTest
     end
 
     def oversize_dcr_body
-      { redirect_uris: [ "http://127.0.0.1:51000/callback" ], pad: OVERSIZE }.to_json
+      { redirect_uris: [ "http://127.0.0.1:51000/callback" ], pad: OVERSIZE_OAUTH }.to_json
     end
 
     def oversize_mcp_body
-      { jsonrpc: "2.0", id: 1, method: "initialize", params: { pad: OVERSIZE } }.to_json
+      { jsonrpc: "2.0", id: 1, method: "initialize", params: { pad: OVERSIZE_MCP } }.to_json
     end
 
     def mint_token

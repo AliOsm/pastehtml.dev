@@ -1,11 +1,13 @@
-# Rejects oversized POST bodies to the two public MCP/OAuth endpoints before any
+# Rejects oversized POST bodies to the public MCP and OAuth endpoints before any
 # downstream middleware, Rails param parsing, or the MCP transport reads them.
 #
-# Both public endpoints otherwise read the whole body first and cap afterwards:
-# Dynamic Client Registration materializes JSON params (Rails, unbounded size),
-# and the MCP transport reads up to 4 MiB -- but only once the full request has
-# been received. This middleware sits at the very front of the stack and bounds
-# the request itself, so a giant body is never parsed or buffered by the app.
+# These endpoints otherwise read the whole body first and cap afterwards: the
+# OAuth endpoints (/oauth/token, /oauth/authorize, /oauth/revoke, /oauth/
+# introspect, /oauth/register) materialize form/JSON params through Rails (and
+# resource-indicator enforcement re-reads the form body), and the MCP transport
+# reads the body only once the full request has arrived. This middleware sits at
+# the very front of the stack and bounds the request itself, so a giant body is
+# never parsed or buffered by the app.
 #
 # It bounds the ACTUAL `rack.input` stream rather than trusting the
 # `Content-Length` header, so a chunked, Content-Length-less, or header-lying
@@ -13,29 +15,38 @@
 # stream is replaced with a rewound in-memory copy, so Rails param parsing and
 # the MCP transport downstream still see the full, rewindable body.
 class McpBodyLimit
-  # Match the MCP transport's own request ceiling so the two agree.
-  MAX_BYTES = 4 * 1024 * 1024
+  # The /mcp endpoint carries paste content (up to a 2 MB paste, which balloons
+  # under JSON-string escaping -- quote/backslash-heavy HTML can roughly double),
+  # so its ceiling is generous. It is authenticated and rate-limited, which
+  # bounds the abuse surface. The MCP transport is configured with this same
+  # ceiling (see McpController) so the two agree.
+  MCP_MAX_BYTES = 8 * 1024 * 1024
 
-  # Canonical top-level paths; both are unmounted, apex-host routes.
-  PROTECTED_PATHS = [ "/mcp", "/oauth/register" ].freeze
+  # OAuth requests are tiny (a token exchange, a registration); a much tighter
+  # cap bounds the unauthenticated form-parsing DoS surface.
+  OAUTH_MAX_BYTES = 1 * 1024 * 1024
+
+  MCP_PATH = "/mcp"
+  OAUTH_PREFIX = "/oauth/"
 
   def initialize(app)
     @app = app
   end
 
   def call(env)
-    return @app.call(env) unless guarded?(env)
+    limit = limit_for(env)
+    return @app.call(env) if limit.nil?
 
     # Fast path: a declared oversize is rejected without reading the body at all.
-    return too_large if declared_oversize?(env)
+    return too_large if declared_oversize?(env, limit)
 
     input = env["rack.input"]
     return @app.call(env) if input.nil?
 
     input.rewind if input.respond_to?(:rewind)
     # Read one byte past the cap: if anything remains, the body is too large.
-    buffer = input.read(MAX_BYTES + 1) || "".b
-    return too_large if buffer.bytesize > MAX_BYTES
+    buffer = input.read(limit + 1) || "".b
+    return too_large if buffer.bytesize > limit
 
     # Reading consumed the stream, so hand downstream a rewound in-memory copy.
     env["rack.input"] = StringIO.new(buffer)
@@ -43,8 +54,15 @@ class McpBodyLimit
   end
 
   private
-    def guarded?(env)
-      env["REQUEST_METHOD"] == "POST" && PROTECTED_PATHS.include?(normalized_path(env))
+    # The byte ceiling for this request, or nil if the endpoint is not guarded.
+    def limit_for(env)
+      return nil unless env["REQUEST_METHOD"] == "POST"
+
+      path = normalized_path(env)
+      return MCP_MAX_BYTES if path == MCP_PATH
+      return OAUTH_MAX_BYTES if path.start_with?(OAUTH_PREFIX)
+
+      nil
     end
 
     # Match exactly what Rails' router matches. It normalizes PATH_INFO before
@@ -56,9 +74,9 @@ class McpBodyLimit
       ActionDispatch::Journey::Router::Utils.normalize_path(env["PATH_INFO"].to_s)
     end
 
-    def declared_oversize?(env)
+    def declared_oversize?(env, limit)
       length = env["CONTENT_LENGTH"]
-      !length.nil? && length.to_i > MAX_BYTES
+      !length.nil? && length.to_i > limit
     end
 
     def too_large

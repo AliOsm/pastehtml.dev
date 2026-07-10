@@ -148,6 +148,32 @@ class OauthCleanupJobTest < ActiveJob::TestCase
     assert Doorkeeper::Application.exists?(application.id)
   end
 
+  # An expired access token that still carries a refresh_token is NOT abandoned:
+  # the refresh token can mint new access tokens, so the connection is live. In
+  # production the token endpoint always issues refresh tokens (use_refresh_token),
+  # so this is the realistic shape -- unlike a bare create! which has none.
+  test "a dynamic app 31 days old with an expired but refresh-capable token is kept" do
+    application = create_application(dynamic: true, created_at: 31.days.ago)
+    # Access half expired (created 2 days ago, 1h expiry) but a live refresh token.
+    create_token(application: application, created_at: 2.days.ago, refresh_token: SecureRandom.hex(24))
+
+    OauthCleanupJob.perform_now
+
+    assert Doorkeeper::Application.exists?(application.id), "a refresh-capable connection must not be disconnected"
+  end
+
+  # But refresh capability is not immortality: once the token has been inactive
+  # past the 90-day window, phase 1 revokes it and phase 2 then deletes the app.
+  test "a refresh-capable token inactive for 91 days is revoked then its app deleted" do
+    application = create_application(dynamic: true, created_at: 100.days.ago)
+    token = create_token(application: application, created_at: 91.days.ago, refresh_token: SecureRandom.hex(24))
+
+    OauthCleanupJob.perform_now
+
+    assert_not Doorkeeper::Application.exists?(application.id)
+    assert_not Doorkeeper::AccessToken.exists?(token.id)
+  end
+
   # --- Composition: phase 1's revocation feeds phase 2's deletion -----------
 
   test "phase 1 revoking a stale token lets phase 2 delete the now-abandoned dynamic app in the same run" do
@@ -191,7 +217,7 @@ class OauthCleanupJobTest < ActiveJob::TestCase
       application
     end
 
-    def create_token(application: nil, user: @user, last_used_at: nil, created_at: nil, revoked_at: nil)
+    def create_token(application: nil, user: @user, last_used_at: nil, created_at: nil, revoked_at: nil, refresh_token: nil)
       application ||= create_application(dynamic: false)
       token = Doorkeeper::AccessToken.create!(
         application: application,
@@ -203,7 +229,8 @@ class OauthCleanupJobTest < ActiveJob::TestCase
       token.update_columns(
         last_used_at: last_used_at,
         created_at: created_at || token.created_at,
-        revoked_at: revoked_at
+        revoked_at: revoked_at,
+        refresh_token: refresh_token
       )
       token
     end

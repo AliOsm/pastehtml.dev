@@ -26,13 +26,22 @@ class OauthCleanupJob < ApplicationJob
   # of age or activity.
   DYNAMIC_APPLICATION_STALE_AFTER = 30.days
 
-  # A token or grant is "effective" -- still able to authorize a request -- only
-  # while it is unrevoked AND unexpired. A nil expires_in means the credential
-  # never expires (Doorkeeper permits non-expiring access tokens), so it stays
-  # effective indefinitely. An expired-but-unrevoked credential is inaccessible,
-  # so it must NOT keep a stale dynamic app alive. Both Doorkeeper tables share
-  # these column names, so the one predicate drives both subqueries below.
-  EFFECTIVE_CREDENTIAL_SQL =
+  # An access token keeps a dynamic app alive while it is still USABLE, not just
+  # while its short-lived access half is unexpired. An unrevoked token that
+  # carries a refresh_token can still mint new access tokens (refresh tokens do
+  # not expire in this app), so the connection is live even after the 1-hour
+  # access token lapses. Treating an expired-but-refreshable token as dead is
+  # what wrongly disconnected active clients. Genuine inactivity is handled by
+  # phase 1, which revokes tokens unused for TOKEN_STALE_AFTER; a revoked token
+  # then fails this predicate and lets phase 2 delete the app.
+  EFFECTIVE_TOKEN_SQL =
+    "revoked_at IS NULL AND " \
+    "(refresh_token IS NOT NULL OR expires_in IS NULL OR " \
+    "created_at + expires_in * interval '1 second' > now())"
+
+  # A grant (authorization code) has no refresh capability, so it is effective
+  # only while unrevoked and unexpired.
+  EFFECTIVE_GRANT_SQL =
     "revoked_at IS NULL AND " \
     "(expires_in IS NULL OR created_at + expires_in * interval '1 second' > now())"
 
@@ -73,11 +82,16 @@ class OauthCleanupJob < ApplicationJob
       abandoned = Doorkeeper::Application
         .where(dynamic: true)
         .where("created_at < ?", DYNAMIC_APPLICATION_STALE_AFTER.ago)
-        .where.not(id: Doorkeeper::AccessToken.where(EFFECTIVE_CREDENTIAL_SQL).select(:application_id))
-        .where.not(id: Doorkeeper::AccessGrant.where(EFFECTIVE_CREDENTIAL_SQL).select(:application_id))
-        .to_a
+        .where.not(id: Doorkeeper::AccessToken.where(EFFECTIVE_TOKEN_SQL).select(:application_id))
+        .where.not(id: Doorkeeper::AccessGrant.where(EFFECTIVE_GRANT_SQL).select(:application_id))
 
-      abandoned.each(&:destroy)
-      abandoned.size
+      # Stream rather than materialize the whole set (bounded job memory under
+      # high DCR churn); destroy so Doorkeeper's dependent cleanup runs.
+      deleted = 0
+      abandoned.find_each do |application|
+        application.destroy
+        deleted += 1
+      end
+      deleted
     end
 end
