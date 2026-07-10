@@ -42,10 +42,12 @@ module McpTools
         folder = user.folders.find_by(id: folder_id)
         return folder_not_found(folder_id) if folder.nil?
 
-        if folder.update(name: name)
-          ok(id: folder.id, name: folder.name, pastes_count: folder.pastes.count)
-        else
-          validation_error(folder)
+        translating_uniqueness_race(folder, attribute: :name) do
+          if folder.update(name: name)
+            ok(id: folder.id, name: folder.name, pastes_count: folder.pastes.count)
+          else
+            validation_error(folder)
+          end
         end
       end
 

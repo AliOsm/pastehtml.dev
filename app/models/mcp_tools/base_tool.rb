@@ -81,6 +81,23 @@ module McpTools
         )
       end
 
+      # Persist through a unique-index race. The app-level uniqueness validation
+      # already turns an ordinary duplicate into a clean validation_error, but a
+      # concurrent writer can slip a duplicate past that SELECT, so the
+      # INSERT/UPDATE raises RecordNotUnique at the DB layer -- which, uncaught,
+      # becomes an internal MCP error the agent can't correct. The block
+      # persists `record` and returns the tool response; on that race we add the
+      # same `:taken` error to `attribute` and return the identical
+      # validation_error the plain-duplicate path returns. (find_or_create_folder
+      # keeps its own recover-by-lookup rescue -- it wants the existing folder,
+      # not an error.)
+      def translating_uniqueness_race(record, attribute:)
+        yield
+      rescue ActiveRecord::RecordNotUnique
+        record.errors.add(attribute, :taken)
+        validation_error(record)
+      end
+
       # Look up a folder the user owns, by id or by (case-insensitive) name, for
       # read-side filtering. Returns [folder_or_nil, error_or_nil]; an unknown
       # (or another user's) folder is a not-found error, never a silent empty list.

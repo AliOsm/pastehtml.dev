@@ -73,25 +73,30 @@ module McpTools
         )
         return settings_error if settings_error
 
-        result = nil
-        Paste.transaction do
-          apply_password!(paste, password, clear_password)
-          apply_custom_subdomain!(paste, custom_subdomain, clear_custom_subdomain)
+        # A concurrent claim of the same custom_subdomain can slip past the
+        # uniqueness validation, so paste.save can raise RecordNotUnique -- fold
+        # that race into the same validation error the collision path returns.
+        translating_uniqueness_race(paste, attribute: :custom_subdomain) do
+          result = nil
+          Paste.transaction do
+            apply_password!(paste, password, clear_password)
+            apply_custom_subdomain!(paste, custom_subdomain, clear_custom_subdomain)
 
-          folder_created, folder_error = apply_folder!(paste, user, folder_id, folder_name, clear_folder)
-          if folder_error
-            result = folder_error
-            raise ActiveRecord::Rollback
-          end
+            folder_created, folder_error = apply_folder!(paste, user, folder_id, folder_name, clear_folder)
+            if folder_error
+              result = folder_error
+              raise ActiveRecord::Rollback
+            end
 
-          if paste.save
-            result = ok(paste_detail(paste, folder_created: folder_created))
-          else
-            result = validation_error(paste)
-            raise ActiveRecord::Rollback
+            if paste.save
+              result = ok(paste_detail(paste, folder_created: folder_created))
+            else
+              result = validation_error(paste)
+              raise ActiveRecord::Rollback
+            end
           end
+          result
         end
-        result
       end
 
       private

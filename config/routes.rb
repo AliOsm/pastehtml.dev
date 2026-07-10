@@ -33,6 +33,24 @@ Rails.application.routes.draw do
   # nothing but their document/password gate, so untrusted content can't frame
   # the app's UI under its origin or reach the API from there.
   constraints ->(request) { !paste_host.call(request) } do
+    # deploy.yml also serves `www.<apex>` (and the `*.<apex>` wildcard), but the
+    # OAuth/MCP routes below are constrained to the canonical apex host only, so
+    # a signed-in user who reaches the www host and clicks a relative app link
+    # (e.g. "Connected agents") would 404. Fold `www.<apex>` back onto the apex
+    # with a 301 before any app route matches -- MUST stay at the TOP of this
+    # block so it wins over `root` and friends. The rule matches only the single
+    # host `www.<canonical-host>`: it leaves the canonical host itself alone even
+    # when that host is literally `www.example.com` (the test apex) or the bare
+    # `pastehtml.dev` apex (production). This whole block is the non-paste
+    # branch, so paste origins and `*.<apex>` wildcard subdomains never reach it.
+    constraints host: "www.#{McpOauth::CONFIG[:host]}" do
+      match "/(*path)", via: :all, to: redirect(status: 301) { |_params, request|
+        apex = McpOauth::CONFIG[:host]
+        port = request.standard_port? ? "" : ":#{request.port}"
+        "#{request.protocol}#{apex}#{port}#{request.fullpath}"
+      }
+    end
+
     # Dynamic PWA files rendered from app/views/pwa/*. They live at stable root
     # paths because a service worker's scope is bound to its path.
     get "manifest.json" => "pwa#manifest", as: :pwa_manifest

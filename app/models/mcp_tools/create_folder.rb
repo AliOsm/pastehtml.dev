@@ -40,10 +40,12 @@ module McpTools
         user = user_for(server_context)
         folder = user.folders.new(name: name)
 
-        if folder.save
-          ok(id: folder.id, name: folder.name, pastes_count: 0)
-        else
-          validation_error(folder)
+        translating_uniqueness_race(folder, attribute: :name) do
+          if folder.save
+            ok(id: folder.id, name: folder.name, pastes_count: 0)
+          else
+            validation_error(folder)
+          end
         end
       end
     end

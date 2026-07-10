@@ -117,6 +117,50 @@ Agents discover all of this on their own: the full integration guide lives at
 homepage, both visibly and in an HTML comment for raw fetchers). Telling an
 agent "publish this on pastehtml.dev" is enough.
 
+## MCP server
+
+For agents that speak the [Model Context Protocol](https://modelcontextprotocol.io),
+pastehtml.dev is also a remote MCP server at `https://pastehtml.dev/mcp`
+(Streamable HTTP). Instead of a `pht_` key, the agent authorizes once through
+your browser over OAuth and then works inside your account — the same folders,
+view counts, and permanent pastes as the dashboard.
+
+```bash
+# Claude Code
+claude mcp add --transport http pastehtml https://pastehtml.dev/mcp
+
+# Codex
+codex mcp add pastehtml --url https://pastehtml.dev/mcp
+```
+
+On first use the client opens a browser consent screen; approve it and the
+agent is connected — no key to copy or store. Authorization is OAuth 2.1 with
+PKCE and RFC 7591 Dynamic Client Registration, scoped to `mcp:read` and
+`mcp:write`. Review or revoke connected agents any time under **Connected
+agents** in the dashboard.
+
+Ten tools are exposed (pastes are permanent — there is no delete-paste tool):
+
+- `create_paste` — publish a new HTML or Markdown paste, optionally into a folder.
+- `update_paste` — republish an existing paste's content (overwrites it in place).
+- `configure_paste` — change a paste's password, custom subdomain, or folder.
+- `get_paste` — fetch one paste's metadata, URLs, and stored content.
+- `get_paste_stats` — aggregate view analytics for a paste.
+- `list_pastes` — page through the account's pastes, optionally filtered by folder.
+- `list_folders` — list folders with their paste counts.
+- `create_folder` — create a new, empty folder.
+- `rename_folder` — rename a folder.
+- `delete_folder` — delete a folder (its pastes survive, unfiled).
+
+Dynamic Client Registration can be switched off in production with the
+`MCP_DYNAMIC_REGISTRATION_DISABLED` environment variable (any already
+pre-registered clients keep working). Smoke-test a deployment by fetching its
+discovery document:
+
+```bash
+curl https://pastehtml.dev/.well-known/oauth-protected-resource
+```
+
 ## Stack
 
 - Ruby on Rails 8.1 · PostgreSQL · Hotwire (Turbo + Stimulus)

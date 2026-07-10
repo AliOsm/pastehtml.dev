@@ -21,9 +21,20 @@ class OauthCleanupJob < ApplicationJob
   TOKEN_STALE_AFTER = 90.days
 
   # A dynamically registered application is abandoned once it is at least this
-  # old AND has no active token or grant left. Non-dynamic (pre-registered)
-  # applications are never considered, regardless of age or activity.
+  # old AND has no *effective* (unrevoked and unexpired) token or grant left.
+  # Non-dynamic (pre-registered) applications are never considered, regardless
+  # of age or activity.
   DYNAMIC_APPLICATION_STALE_AFTER = 30.days
+
+  # A token or grant is "effective" -- still able to authorize a request -- only
+  # while it is unrevoked AND unexpired. A nil expires_in means the credential
+  # never expires (Doorkeeper permits non-expiring access tokens), so it stays
+  # effective indefinitely. An expired-but-unrevoked credential is inaccessible,
+  # so it must NOT keep a stale dynamic app alive. Both Doorkeeper tables share
+  # these column names, so the one predicate drives both subqueries below.
+  EFFECTIVE_CREDENTIAL_SQL =
+    "revoked_at IS NULL AND " \
+    "(expires_in IS NULL OR created_at + expires_in * interval '1 second' > now())"
 
   def perform
     revoked_count = revoke_stale_tokens!
@@ -50,23 +61,23 @@ class OauthCleanupJob < ApplicationJob
       count
     end
 
-    # Dynamic applications old enough, with no active token and no active
-    # grant, are destroyed outright. Doorkeeper's Application#destroy
-    # delete_all's its access_tokens/access_grants associations, so any
-    # already-revoked rows (including ones this same run just revoked above)
-    # disappear along with the application -- that composition is intended.
+    # Dynamic applications old enough, with no effective token and no effective
+    # grant, are destroyed outright. Abandonment is decided in a single bulk
+    # query (two `NOT EXISTS`-style subqueries) rather than per-candidate
+    # association loads, so it stays O(1) queries no matter how many candidates
+    # there are. Doorkeeper's Application#destroy delete_all's its
+    # access_tokens/access_grants associations, so any leftover (revoked or
+    # expired) rows -- including ones this same run just revoked above --
+    # disappear along with the application; that composition is intended.
     def delete_abandoned_dynamic_applications!
-      candidates = Doorkeeper::Application
+      abandoned = Doorkeeper::Application
         .where(dynamic: true)
         .where("created_at < ?", DYNAMIC_APPLICATION_STALE_AFTER.ago)
+        .where.not(id: Doorkeeper::AccessToken.where(EFFECTIVE_CREDENTIAL_SQL).select(:application_id))
+        .where.not(id: Doorkeeper::AccessGrant.where(EFFECTIVE_CREDENTIAL_SQL).select(:application_id))
+        .to_a
 
-      abandoned = candidates.select { |application| abandoned?(application) }
       abandoned.each(&:destroy)
       abandoned.size
-    end
-
-    def abandoned?(application)
-      application.access_tokens.where(revoked_at: nil).none? &&
-        application.access_grants.where(revoked_at: nil).none?
     end
 end

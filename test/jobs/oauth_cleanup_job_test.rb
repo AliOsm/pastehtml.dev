@@ -92,6 +92,62 @@ class OauthCleanupJobTest < ActiveJob::TestCase
     assert Doorkeeper::Application.exists?(application.id)
   end
 
+  # An EXPIRED (but never revoked) grant is inaccessible -- its short TTL has
+  # lapsed -- so it must NOT keep an abandoned dynamic app alive. This is the
+  # regression the old `revoked_at: nil` abandonment check missed.
+  test "a dynamic app 31 days old with only an expired grant is deleted" do
+    application = create_application(dynamic: true, created_at: 31.days.ago)
+    create_grant(application: application, created_at: 31.days.ago)
+
+    OauthCleanupJob.perform_now
+
+    assert_not Doorkeeper::Application.exists?(application.id)
+  end
+
+  # Same for an unrevoked-but-expired access token: recent activity keeps phase
+  # 1 from revoking it, yet it is expired, so it cannot keep the app alive.
+  test "a dynamic app 31 days old with only an expired (unrevoked) token is deleted" do
+    application = create_application(dynamic: true, created_at: 31.days.ago)
+    create_token(application: application, last_used_at: 1.day.ago, created_at: 40.days.ago)
+
+    OauthCleanupJob.perform_now
+
+    assert_not Doorkeeper::Application.exists?(application.id)
+  end
+
+  # A nil expires_in means the token never expires (Doorkeeper permits this), so
+  # it stays effective indefinitely and keeps the app.
+  test "a dynamic app 31 days old with a non-expiring (nil expires_in) token is kept" do
+    application = create_application(dynamic: true, created_at: 31.days.ago)
+    token = create_token(application: application, last_used_at: 1.day.ago)
+    token.update_columns(expires_in: nil)
+
+    OauthCleanupJob.perform_now
+
+    assert Doorkeeper::Application.exists?(application.id)
+  end
+
+  # The age gate still wins: an expired credential on a too-young app is moot.
+  test "a dynamic app 29 days old with an expired grant is kept (too young)" do
+    application = create_application(dynamic: true, created_at: 29.days.ago)
+    create_grant(application: application, created_at: 40.days.ago)
+
+    OauthCleanupJob.perform_now
+
+    assert Doorkeeper::Application.exists?(application.id)
+  end
+
+  # A mix: one effective token outweighs any number of expired credentials.
+  test "a dynamic app 31 days old with an expired grant but one active token is kept" do
+    application = create_application(dynamic: true, created_at: 31.days.ago)
+    create_token(application: application, last_used_at: 1.day.ago)
+    create_grant(application: application, created_at: 40.days.ago)
+
+    OauthCleanupJob.perform_now
+
+    assert Doorkeeper::Application.exists?(application.id)
+  end
+
   # --- Composition: phase 1's revocation feeds phase 2's deletion -----------
 
   test "phase 1 revoking a stale token lets phase 2 delete the now-abandoned dynamic app in the same run" do
@@ -152,16 +208,17 @@ class OauthCleanupJobTest < ActiveJob::TestCase
       token
     end
 
-    def create_grant(application:, user: @user, revoked_at: nil)
+    def create_grant(application:, user: @user, revoked_at: nil, created_at: nil, expires_in: 600)
       grant = Doorkeeper::AccessGrant.create!(
         application: application,
         resource_owner_id: user.id,
         redirect_uri: application.redirect_uri,
-        expires_in: 600,
+        expires_in: expires_in,
         scopes: "mcp:read mcp:write",
         resource: RESOURCE
       )
-      grant.update_columns(revoked_at: revoked_at) if revoked_at
+      columns = { revoked_at: revoked_at, created_at: created_at }.compact
+      grant.update_columns(columns) if columns.any?
       grant
     end
 

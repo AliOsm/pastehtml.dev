@@ -154,6 +154,20 @@ class McpTools::ConfigurePasteTest < ActiveSupport::TestCase
     assert_equal "custom_subdomain", response.structured_content[:field]
   end
 
+  # A concurrent claim of the same custom_subdomain can slip past the uniqueness
+  # validation, so the save raises RecordNotUnique at the DB layer. That race
+  # must surface as the same stable validation error on custom_subdomain, never
+  # an uncaught exception (which would become an internal MCP error).
+  test "a custom_subdomain RecordNotUnique race returns the validation error, not an exception" do
+    paste = create_paste_for(@alice)
+
+    response = simulating_uniqueness_race(Paste, :save) { configure(token: paste.token, custom_subdomain: "fresh-sub") }
+
+    assert response.error?
+    assert_equal "validation_failed", response.structured_content[:code]
+    assert_equal "custom_subdomain", response.structured_content[:field]
+  end
+
   test "annotations mark it destructive, idempotent, non-read-only, closed-world" do
     annotations = McpTools::ConfigurePaste.annotations_value
 
@@ -173,5 +187,24 @@ class McpTools::ConfigurePasteTest < ActiveSupport::TestCase
       options.each { |key, value| paste.public_send("#{key}=", value) }
       paste.save!
       paste
+    end
+
+    # Forces the next call to `method` on `klass` to raise RecordNotUnique once,
+    # the way a concurrent claim would at the DB layer after the app-level
+    # uniqueness validation already passed. Restores the method afterward.
+    def simulating_uniqueness_race(klass, method)
+      defined_here = klass.instance_methods(false).include?(method)
+      original = klass.instance_method(method)
+      raised = false
+      klass.send(:define_method, method) do |*args, **kwargs, &block|
+        unless raised
+          raised = true
+          raise ActiveRecord::RecordNotUnique, "PG::UniqueViolation"
+        end
+        original.bind(self).call(*args, **kwargs, &block)
+      end
+      yield
+    ensure
+      defined_here ? klass.send(:define_method, method, original) : klass.send(:remove_method, method)
     end
 end

@@ -99,6 +99,39 @@ Create a folder explicitly with an unscoped key. Nested form params and a top-le
     curl -X POST -H "Authorization: Bearer pht_..." \
       -d "name=Roadmap" https://pastehtml.dev/api/folders
 
+## MCP server (OAuth, no API key)
+
+If you are a coding agent that speaks the Model Context Protocol, you can skip
+the HTTP API above and connect to the remote MCP server instead. It lives at
+https://pastehtml.dev/mcp (Streamable HTTP) and authorizes over OAuth in the
+user's browser -- there is no pht_ key to handle.
+
+    # Claude Code
+    claude mcp add --transport http pastehtml https://pastehtml.dev/mcp
+
+    # Codex
+    codex mcp add pastehtml --url https://pastehtml.dev/mcp
+
+The first call opens a browser consent screen; once the user approves it, the
+agent acts inside their account. Auth is OAuth 2.1 + PKCE with Dynamic Client
+Registration (no client secret), scopes mcp:read and mcp:write; the user manages
+or revokes agents under "Connected agents". Ten tools are exposed -- pastes are
+permanent, so there is no delete-paste tool:
+
+    create_paste       publish a new HTML or Markdown paste (optionally into a folder)
+    update_paste       republish an existing paste's content (overwrites it)
+    configure_paste    change a paste's password, custom subdomain, or folder
+    get_paste          fetch one paste's metadata, URLs, and stored content
+    get_paste_stats    aggregate view analytics for a paste
+    list_pastes        page through the account's pastes (optionally by folder)
+    list_folders       list folders with their paste counts
+    create_folder      create a new, empty folder
+    rename_folder      rename a folder
+    delete_folder      delete a folder (its pastes survive, unfiled)
+
+Everything else in this guide -- self-contained documents, the 2 MB limit,
+always showing the user the live_url -- applies equally when publishing over MCP.
+
 ## Publish Markdown
 
 Upload Markdown and the server renders it into a styled, self-contained HTML
