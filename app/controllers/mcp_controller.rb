@@ -56,7 +56,13 @@ class McpController < ActionController::API
       version: McpTools::VERSION,
       instructions: McpTools::INSTRUCTIONS,
       tools: McpTools.for_scopes(token_scopes),
-      server_context: { user: current_token_user }
+      server_context: { user: current_token_user },
+      # Turn on the SDK's server-side result validation so a successful tool
+      # result that does not match its declared output_schema is caught here
+      # rather than shipped to the agent. Argument validation is already on by
+      # the SDK default; error results are exempt (they follow the tool error
+      # contract, not the success schema).
+      configuration: MCP::Configuration.new(validate_tool_call_results: true)
     )
     transport = MCP::Server::Transports::StreamableHTTPTransport.new(
       server,
