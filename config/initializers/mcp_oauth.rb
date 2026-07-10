@@ -34,4 +34,13 @@ module McpOauth
     host: host,
     protected_resource_metadata_url: "#{issuer}/.well-known/oauth-protected-resource".freeze
   }.freeze
+
+  # Loopback hosts for which RFC 8252 §7.3 permits plain-http redirect URIs on
+  # any port -- native/CLI agents (Claude Code, Codex) receive their
+  # authorization code on a random loopback port per session. Shared by the
+  # Dynamic Client Registration validation (Oauth::RegistrationsController) and
+  # Doorkeeper's redirect-URI SSL enforcement (force_ssl_in_redirect_uri), which
+  # must agree on exactly which hosts skip the TLS requirement. Compared against
+  # a downcased URI host, so `URI.parse("http://[::1]:...").host` -> "[::1]".
+  LOOPBACK_HOSTS = %w[localhost 127.0.0.1 [::1]].freeze
 end

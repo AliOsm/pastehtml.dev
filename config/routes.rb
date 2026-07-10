@@ -89,6 +89,11 @@ Rails.application.routes.draw do
       # for that one.
       get ".well-known/oauth-protected-resource(/mcp)", to: "well_known#protected_resource"
       get ".well-known/oauth-authorization-server", to: "well_known#authorization_server"
+
+      # RFC 7591 Dynamic Client Registration -- the PUBLIC, internet-facing
+      # endpoint where MCP agents self-register before running the OAuth flow.
+      # ActionController::API (no session, no CSRF): CLI clients POST bare JSON.
+      post "oauth/register", to: "oauth/registrations#create"
     end
     get "p/:token", to: "pastes#show", as: :paste
     get "p/:token/password", to: "paste_passwords#new", as: :paste_password

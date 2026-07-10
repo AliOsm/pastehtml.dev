@@ -49,6 +49,16 @@ Doorkeeper.configure do
   # bearer_token request params, which the MCP spec forbids.
   access_token_methods :from_bearer_authorization
 
+  # RFC 8252 §7.3: native/CLI clients (Claude Code, Codex) receive their
+  # authorization code on a loopback redirect over plain http on a per-session
+  # random port. Require TLS on every other redirect URI, but never on loopback
+  # -- keep this in lockstep with Oauth::RegistrationsController's own scheme
+  # rules (both read McpOauth::LOOPBACK_HOSTS) so a URI it accepts at
+  # registration also passes Doorkeeper's RedirectUriValidator on save.
+  force_ssl_in_redirect_uri do |uri|
+    McpOauth::LOOPBACK_HOSTS.exclude?(uri.host.to_s.downcase)
+  end
+
   default_scopes :"mcp:read"
   optional_scopes :"mcp:write"
 
