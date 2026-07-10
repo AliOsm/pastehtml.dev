@@ -13,13 +13,16 @@ class McpToolsIntegrationTest < ActionDispatch::IntegrationTest
 
   # --- tools/list is scope-filtered presentation ---------------------------
 
-  test "a full-scope token lists all three tools with annotations present" do
+  test "a full-scope token lists all ten tools with annotations present" do
     mcp_post(tools_list_body, token: read_write_token.plaintext_token)
 
     assert_response :ok
     tools = response.parsed_body.dig("result", "tools")
     names = tools.map { |tool| tool["name"] }.sort
-    assert_equal %w[ create_paste list_folders list_pastes ], names
+    assert_equal %w[
+      configure_paste create_folder create_paste delete_folder get_paste
+      get_paste_stats list_folders list_pastes rename_folder update_paste
+    ], names
 
     create = tools.find { |tool| tool["name"] == "create_paste" }
     annotations = create.fetch("annotations")
@@ -32,14 +35,20 @@ class McpToolsIntegrationTest < ActionDispatch::IntegrationTest
     read_tool = tools.find { |tool| tool["name"] == "list_pastes" }
     assert_equal true, read_tool.dig("annotations", "readOnlyHint")
     assert_equal true, read_tool.dig("annotations", "idempotentHint")
+
+    update_tool = tools.find { |tool| tool["name"] == "update_paste" }
+    assert_equal true, update_tool.dig("annotations", "destructiveHint"), "update_paste must be flagged destructive"
+
+    delete_tool = tools.find { |tool| tool["name"] == "delete_folder" }
+    assert_equal true, delete_tool.dig("annotations", "destructiveHint"), "delete_folder must be flagged destructive"
   end
 
-  test "a read-only token lists only the two read tools" do
+  test "a read-only token lists exactly the four read tools" do
     mcp_post(tools_list_body, token: read_token.plaintext_token)
 
     assert_response :ok
     names = response.parsed_body.dig("result", "tools").map { |tool| tool["name"] }.sort
-    assert_equal %w[ list_folders list_pastes ], names
+    assert_equal %w[ get_paste get_paste_stats list_folders list_pastes ], names
   end
 
   # --- tools/call -----------------------------------------------------------
@@ -90,6 +99,21 @@ class McpToolsIntegrationTest < ActionDispatch::IntegrationTest
     pastes = result.dig("structuredContent", "pastes")
     assert pastes.first["content_bytes"].is_a?(Integer)
     assert_equal 1, result.dig("structuredContent", "total_count")
+  end
+
+  test "update_paste republishes a user-owned paste's content through the real endpoint" do
+    paste = @user.pastes.create!(content: "<title>Before</title><p>old</p>", original_filename: "paste.html")
+
+    mcp_post(
+      tools_call_body("update_paste", token: paste.token, content: "<title>After</title><p>new</p>", format: "html"),
+      token: read_write_token.plaintext_token
+    )
+
+    assert_response :ok
+    result = response.parsed_body["result"]
+    assert_not result["isError"]
+    assert_equal "After", result.dig("structuredContent", "title")
+    assert_equal "<title>After</title><p>new</p>", paste.reload.content
   end
 
   test "list_folders returns a structured result for a read token" do

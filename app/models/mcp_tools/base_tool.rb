@@ -28,6 +28,15 @@ module McpTools
       "folder" => "folder_id"
     }.freeze
 
+    # format => synthetic filename used when a tool omits `filename`, and the
+    # extension that format's filename must carry when one is supplied. Shared
+    # by every tool that republishes content (create_paste, update_paste) so
+    # `Paste.render_content`/`Paste#republish` are always keyed on a filename
+    # derived from the required `format` argument -- never inferred or left to
+    # fall back to a paste's previously stored filename.
+    SYNTHETIC_FILENAME = { "html" => "paste.html", "markdown" => "paste.md" }.freeze
+    EXTENSION_FOR_FORMAT = { "html" => Paste::HTML_EXTENSION, "markdown" => Paste::MARKDOWN_EXTENSION }.freeze
+
     class << self
       private
 
@@ -96,6 +105,64 @@ module McpTools
         paste.folder && { id: paste.folder_id, name: paste.folder.name }
       end
 
+      # Returns [filename, error]. A supplied filename must carry the extension
+      # `format` implies; otherwise a synthetic name drives render_content, so
+      # rendering always agrees with the caller's explicit `format`.
+      def resolve_filename(format, filename)
+        return [ SYNTHETIC_FILENAME.fetch(format), nil ] if filename.blank?
+
+        extension = File.extname(filename)
+        return [ filename, nil ] if extension.match?(EXTENSION_FOR_FORMAT.fetch(format))
+
+        [ nil, failure(
+          code: "filename_format_mismatch",
+          message: "filename #{filename.inspect} does not match format #{format.inspect}.",
+          field: "filename"
+        ) ]
+      end
+
+      # Look up a folder the user owns, by id or by (case-insensitive) name, for
+      # write-side use, auto-creating a missing named folder. Returns
+      # [folder, folder_created, error]. folder_id wins and must belong to the
+      # user; a folder_id + folder_name pair naming different folders is a
+      # conflict. Shared by create_paste and configure_paste.
+      def resolve_or_create_folder(user, folder_id, folder_name)
+        requested_name = folder_name.to_s.strip.presence
+
+        if folder_id.present?
+          folder = user.folders.find_by(id: folder_id)
+          return [ nil, false, failure(code: "folder_not_found", message: "No folder with id #{folder_id}.", field: "folder_id") ] if folder.nil?
+
+          if requested_name && !folder.name.casecmp?(requested_name)
+            return [ nil, false, failure(code: "folder_mismatch", message: "folder_id and folder_name refer to different folders.", field: "folder_name") ]
+          end
+
+          [ folder, false, nil ]
+        elsif requested_name
+          find_or_create_folder(user, requested_name)
+        else
+          [ nil, false, nil ]
+        end
+      end
+
+      # Find-or-create by name, tolerant of a concurrent creator, mirroring
+      # Api::PastesController#find_or_create_named_folder. Returns
+      # [folder, folder_created, error].
+      def find_or_create_folder(user, name)
+        existing = user.folders.where("LOWER(name) = ?", name.downcase).first
+        return [ existing, false, nil ] if existing
+
+        folder = user.folders.new(name: name)
+        begin
+          Folder.transaction(requires_new: true) { folder.save! }
+          [ folder, true, nil ]
+        rescue ActiveRecord::RecordInvalid
+          [ nil, false, validation_error(folder) ]
+        rescue ActiveRecord::RecordNotUnique
+          [ user.folders.find_by!("LOWER(name) = ?", name.downcase), false, nil ]
+        end
+      end
+
       def issuer
         McpOauth::CONFIG[:issuer]
       end
@@ -127,6 +194,13 @@ module McpTools
           folder_created: folder_created,
           password_protected: paste.password_protected?
         }
+      end
+
+      # paste_detail without the folder_created flag, for tools that never
+      # create a folder as a side effect (update_paste, get_paste) -- the field
+      # would only ever read false and invite a misleading reading.
+      def paste_summary(paste)
+        paste_detail(paste, folder_created: false).except(:folder_created)
       end
     end
   end

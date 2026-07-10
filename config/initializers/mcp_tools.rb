@@ -10,6 +10,13 @@
 # `register` overwrites, so this is idempotent.
 Rails.application.config.to_prepare do
   McpTools.register(McpTools::CreatePaste, scope: McpTools::WRITE_SCOPE)
+  McpTools.register(McpTools::UpdatePaste, scope: McpTools::WRITE_SCOPE)
+  McpTools.register(McpTools::ConfigurePaste, scope: McpTools::WRITE_SCOPE)
+  McpTools.register(McpTools::GetPaste, scope: McpTools::READ_SCOPE)
+  McpTools.register(McpTools::GetPasteStats, scope: McpTools::READ_SCOPE)
   McpTools.register(McpTools::ListPastes, scope: McpTools::READ_SCOPE)
   McpTools.register(McpTools::ListFolders, scope: McpTools::READ_SCOPE)
+  McpTools.register(McpTools::CreateFolder, scope: McpTools::WRITE_SCOPE)
+  McpTools.register(McpTools::RenameFolder, scope: McpTools::WRITE_SCOPE)
+  McpTools.register(McpTools::DeleteFolder, scope: McpTools::WRITE_SCOPE)
 end

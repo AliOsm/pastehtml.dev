@@ -9,9 +9,6 @@ module McpTools
   # right thing. There is deliberately no `title` argument -- the title is always
   # derived from the content's <title> on save.
   class CreatePaste < BaseTool
-    SYNTHETIC_FILENAME = { "html" => "paste.html", "markdown" => "paste.md" }.freeze
-    EXTENSION_FOR_FORMAT = { "html" => Paste::HTML_EXTENSION, "markdown" => Paste::MARKDOWN_EXTENSION }.freeze
-
     tool_name "create_paste"
     description <<~TEXT.strip
       Create and publish a new paste owned by the authenticated user. Side effect: \
@@ -95,7 +92,7 @@ module McpTools
 
         result = nil
         Paste.transaction do
-          folder, folder_created, folder_error = resolve_folder(user, folder_id, folder_name)
+          folder, folder_created, folder_error = resolve_or_create_folder(user, folder_id, folder_name)
           if folder_error
             result = folder_error
             raise ActiveRecord::Rollback
@@ -113,61 +110,6 @@ module McpTools
       end
 
       private
-        # Returns [filename, error]. A supplied filename must carry the extension
-        # `format` implies; otherwise a synthetic name drives render_content.
-        def resolve_filename(format, filename)
-          return [ SYNTHETIC_FILENAME.fetch(format), nil ] if filename.blank?
-
-          extension = File.extname(filename)
-          return [ filename, nil ] if extension.match?(EXTENSION_FOR_FORMAT.fetch(format))
-
-          [ nil, failure(
-            code: "filename_format_mismatch",
-            message: "filename #{filename.inspect} does not match format #{format.inspect}.",
-            field: "filename"
-          ) ]
-        end
-
-        # Returns [folder, folder_created, error]. folder_id wins and must belong
-        # to the user; a folder_id + folder_name pair that name different folders
-        # is a conflict; a lone folder_name auto-creates a missing folder.
-        def resolve_folder(user, folder_id, folder_name)
-          requested_name = folder_name.to_s.strip.presence
-
-          if folder_id.present?
-            folder = user.folders.find_by(id: folder_id)
-            return [ nil, false, failure(code: "folder_not_found", message: "No folder with id #{folder_id}.", field: "folder_id") ] if folder.nil?
-
-            if requested_name && !folder.name.casecmp?(requested_name)
-              return [ nil, false, failure(code: "folder_mismatch", message: "folder_id and folder_name refer to different folders.", field: "folder_name") ]
-            end
-
-            [ folder, false, nil ]
-          elsif requested_name
-            find_or_create_folder(user, requested_name)
-          else
-            [ nil, false, nil ]
-          end
-        end
-
-        # Find-or-create by name, tolerant of a concurrent creator, mirroring
-        # Api::PastesController#find_or_create_named_folder. Returns
-        # [folder, folder_created, error].
-        def find_or_create_folder(user, name)
-          existing = user.folders.where("LOWER(name) = ?", name.downcase).first
-          return [ existing, false, nil ] if existing
-
-          folder = user.folders.new(name: name)
-          begin
-            Folder.transaction(requires_new: true) { folder.save! }
-            [ folder, true, nil ]
-          rescue ActiveRecord::RecordInvalid
-            [ nil, false, validation_error(folder) ]
-          rescue ActiveRecord::RecordNotUnique
-            [ user.folders.find_by!("LOWER(name) = ?", name.downcase), false, nil ]
-          end
-        end
-
         def build_paste(user, content, filename, folder, custom_subdomain, password)
           paste = Paste.new(
             content: Paste.render_content(content, filename),
