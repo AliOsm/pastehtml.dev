@@ -20,6 +20,11 @@ class OauthAuthorizationFlowTest < ActionDispatch::IntegrationTest
     assert_select "input[type=hidden][name=code_challenge][value=?]", code_challenge
     assert_includes response.body, client.name
 
+    # Approval and denial redirect to a client-controlled callback origin
+    # (usually localhost for CLI agents). Turbo must not turn those redirects
+    # into cross-origin fetches; both forms require native browser navigation.
+    assert_select "form[data-turbo='false']", count: 2
+
     # Requested scopes are shown with human labels.
     assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:read")
     assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:write")
