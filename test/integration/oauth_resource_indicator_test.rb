@@ -125,6 +125,32 @@ class OauthResourceIndicatorTest < ActionDispatch::IntegrationTest
     assert_equal CANONICAL_RESOURCE, token.resource
   end
 
+  test "an uppercase-equivalent resource end-to-end mints a token usable at /mcp" do
+    # Round-7 proof that canonical storage composes with the /mcp audience
+    # check: the whole authorize+token dance runs through the client's
+    # uppercase spelling, and the resulting token -- stored canonically --
+    # must still authenticate, not merely persist correctly (the other tests
+    # in this file stop at grant/token storage assertions).
+    code = obtain_authorization_code(resource: UPPERCASED_RESOURCE)
+
+    post "/oauth/token", params: token_params(code: code, resource: UPPERCASED_RESOURCE)
+    assert_response :success
+    access_token = response.parsed_body["access_token"]
+
+    post "/mcp", params: {
+      jsonrpc: "2.0", id: 1, method: "initialize",
+      params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1.0" } }
+    }.to_json,
+      headers: {
+        "Content-Type" => "application/json",
+        "Accept" => "application/json, text/event-stream",
+        "Authorization" => "Bearer #{access_token}"
+      }
+
+    assert_response :ok
+    assert response.parsed_body["result"].present?
+  end
+
   test "refresh without a resource parameter is rejected" do
     refresh_token = exchange_code_for_token["refresh_token"]
 
