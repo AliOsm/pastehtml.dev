@@ -65,6 +65,7 @@ class McpController < ActionController::API
 
   before_action :enforce_origin!
   before_action :authenticate_token!
+  before_action :reject_non_object_params!
   before_action :enforce_tool_scope!
   before_action :enforce_write_rate_limit!
 
@@ -253,6 +254,24 @@ class McpController < ActionController::API
     end
 
     # --- Step 3: scope enforcement + write rate limits ----------------------
+
+    # JSON-RPC/MCP method `params` must be a structured object. When a client
+    # sends an array or scalar (the JSON-RPC spec allows array params in general,
+    # but MCP methods take objects), the SDK indexes the non-object by a symbol
+    # and surfaces a -32603 "Internal error". Answer the semantically correct
+    # -32602 "Invalid params" ourselves instead, before dispatch. Only requests
+    # (those carrying an `id`) get a response; a malformed notification stays a
+    # no-response (the transport acks it 202).
+    def reject_non_object_params!
+      body = mcp_request_body
+      return if body.nil? || !body.key?(:id)
+      return unless body.key?(:params)
+
+      params = body[:params]
+      return if params.nil? || params.is_a?(Hash)
+
+      render json: { jsonrpc: "2.0", id: body[:id], error: { code: -32_602, message: "Invalid params" } }
+    end
 
     def enforce_tool_scope!
       body = mcp_request_body

@@ -244,31 +244,58 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_response :too_many_requests
   end
 
-  test "a tools/call whose params is not an object does not 500" do
+  test "a tools/call whose params is a scalar returns -32602 Invalid params" do
     body = %({"jsonrpc":"2.0","id":2,"method":"tools/call","params":"not-an-object"})
 
     mcp_post(body, token: read_write_token.plaintext_token)
 
-    # Previously Hash#dig on the String params raised and 500ed; now the peek
-    # yields no tool name, the gate steps aside, and the transport handles the
-    # malformed call as a JSON-RPC error.
     assert_not_equal 500, response.status
+    error = response.parsed_body["error"]
+    assert_equal(-32_602, error["code"])
+    assert_equal "Invalid params", error["message"]
   end
 
-  test "a tools/call with array params returns an error with no leaked exception data" do
-    # JSON-RPC permits array params. The SDK's dispatch (outside the per-tool
-    # wrapper) raises a TypeError indexing the array by a symbol and embeds the
-    # raw message in the error `data`; the boundary sanitizer strips it.
+  test "a tools/call with array params returns -32602, not a leaked internal error" do
+    # JSON-RPC permits array params, but MCP methods take objects; the SDK would
+    # otherwise index the array by a symbol and surface a -32603 whose data leaks
+    # the raw Ruby message. We answer the semantically correct -32602 first.
     body = %({"jsonrpc":"2.0","id":7,"method":"tools/call","params":[1,2,3]})
 
     mcp_post(body, token: read_write_token.plaintext_token)
 
     assert_not_equal 500, response.status
     error = response.parsed_body["error"]
-    assert_equal(-32_603, error["code"])
-    assert_not error.key?("data"), "raw exception data must be stripped at the JSON-RPC boundary"
+    assert_equal(-32_602, error["code"])
+    assert_equal 7, response.parsed_body["id"]
+    assert_not error.key?("data"), "no exception detail must be exposed"
     assert_not_includes response.body, "no implicit conversion"
-    assert_not_includes response.body, "Symbol into Integer"
+  end
+
+  test "initialize with array params also returns -32602" do
+    body = %({"jsonrpc":"2.0","id":9,"method":"initialize","params":[1,2]})
+
+    mcp_post(body, token: read_write_token.plaintext_token)
+
+    assert_equal(-32_602, response.parsed_body.dig("error", "code"))
+  end
+
+  # The pre-dispatch check now answers malformed params as -32602, but the
+  # boundary sanitizer remains the net for any OTHER -32603 whose data could leak
+  # (e.g. a genuine dispatch-time bug). Exercise it directly so it stays covered.
+  test "the boundary sanitizer strips data from a -32603 error only" do
+    controller = McpController.new
+
+    internal = { "jsonrpc" => "2.0", "id" => 1, "error" => { "code" => -32_603, "message" => "Internal error", "data" => "secret detail" } }
+    assert controller.send(:redact_internal_error!, internal), "should report a change"
+    assert_not internal["error"].key?("data"), "-32603 data must be stripped"
+
+    other = { "error" => { "code" => -32_602, "message" => "Invalid params", "data" => "Tool not found: x" } }
+    assert_not controller.send(:redact_internal_error!, other), "other codes untouched"
+    assert_equal "Tool not found: x", other["error"]["data"]
+
+    batch = [ internal.dup.tap { |h| h["error"] = { "code" => -32_603, "data" => "leak" } }, { "result" => {} } ]
+    assert controller.send(:redact_internal_error!, batch)
+    assert_not batch.first["error"].key?("data")
   end
 
   # --- Advertised capabilities match what the server implements -------------
