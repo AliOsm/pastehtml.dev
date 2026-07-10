@@ -255,20 +255,30 @@ class McpController < ActionController::API
 
     # --- Step 3: scope enforcement + write rate limits ----------------------
 
-    # JSON-RPC/MCP method `params` must be a structured object. When a client
-    # sends an array or scalar (the JSON-RPC spec allows array params in general,
-    # but MCP methods take objects), the SDK indexes the non-object by a symbol
-    # and surfaces a -32603 "Internal error". Answer the semantically correct
-    # -32602 "Invalid params" ourselves instead, before dispatch. Only requests
-    # (those carrying an `id`) get a response; a malformed notification stays a
-    # no-response (the transport acks it 202).
+    # Methods whose MCP schema REQUIRES an object `params` (initialize needs
+    # protocolVersion/capabilities/clientInfo; tools/call needs name/arguments).
+    # For these, a missing or null params is as invalid as a non-object one.
+    PARAMS_REQUIRED_METHODS = %w[initialize tools/call].freeze
+
+    # JSON-RPC/MCP method `params`, when present, must be a structured object
+    # (the JSON-RPC spec allows array params in general, but MCP methods take
+    # objects). If it is an array or scalar the SDK would index the non-object by
+    # a symbol and surface a -32603 "Internal error"; and for the methods that
+    # require params, a missing/null params would either 500-then-sanitize
+    # (tools/call) or silently proceed without required client info (initialize).
+    # Answer the semantically correct -32602 "Invalid params" ourselves, before
+    # dispatch. Only requests (those carrying an `id`) get a response; a malformed
+    # notification stays a no-response (the transport acks it 202).
     def reject_non_object_params!
       body = mcp_request_body
       return if body.nil? || !body.key?(:id)
-      return unless body.key?(:params)
 
       params = body[:params]
-      return if params.nil? || params.is_a?(Hash)
+      if PARAMS_REQUIRED_METHODS.include?(body[:method])
+        return if params.is_a?(Hash) # required: missing/null/non-object all invalid
+      else
+        return if params.nil? || params.is_a?(Hash) # optional: only a present non-object is invalid
+      end
 
       render json: { jsonrpc: "2.0", id: body[:id], error: { code: -32_602, message: "Invalid params" } }
     end

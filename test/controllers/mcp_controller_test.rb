@@ -279,6 +279,28 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_equal(-32_602, response.parsed_body.dig("error", "code"))
   end
 
+  test "methods that require object params reject null or omitted params with -32602" do
+    # initialize needs protocolVersion/capabilities/clientInfo; tools/call needs
+    # name/arguments. Per the MCP schema a missing/null params is invalid.
+    [
+      %({"jsonrpc":"2.0","id":9,"method":"initialize","params":null}),
+      %({"jsonrpc":"2.0","id":9,"method":"initialize"}),
+      %({"jsonrpc":"2.0","id":3,"method":"tools/call","params":null}),
+      %({"jsonrpc":"2.0","id":3,"method":"tools/call"})
+    ].each do |body|
+      mcp_post(body, token: read_write_token.plaintext_token)
+      assert_equal(-32_602, response.parsed_body.dig("error", "code"), "expected -32602 for #{body}")
+    end
+  end
+
+  test "methods with optional params still succeed when params is omitted" do
+    # tools/list takes an optional cursor; omitting params must not be rejected.
+    mcp_post(%({"jsonrpc":"2.0","id":4,"method":"tools/list"}), token: read_write_token.plaintext_token)
+
+    assert_response :ok
+    assert response.parsed_body.dig("result", "tools").present?, "tools/list should still work with no params"
+  end
+
   # The pre-dispatch check now answers malformed params as -32602, but the
   # boundary sanitizer remains the net for any OTHER -32603 whose data could leak
   # (e.g. a genuine dispatch-time bug). Exercise it directly so it stays covered.
