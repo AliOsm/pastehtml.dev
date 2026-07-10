@@ -62,6 +62,11 @@
                   class: "inline-flex items-center sm:-rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{api_keys_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" do %>
               <%= nav_icon(:api_keys) %><span class="hidden sm:inline"><%= t("layout.api_keys") %></span>
             <% end %>
+            <% connected_agents_current = current_nav?(:connected_agents) %>
+            <%= link_to oauth_authorized_applications_path, aria: { label: t("layout.connected_agents"), current: ("page" if connected_agents_current) },
+                  class: "inline-flex items-center sm:rotate-1 border-2 border-ink p-2.5 font-display text-xs tracking-wide shadow-comic-sm sm:px-2.5 sm:py-1 sm:text-sm #{connected_agents_current ? "bg-ink text-paper" : "bg-white text-ink hover:bg-hero-yellow"}" do %>
+              <%= nav_icon(:connected_agents) %><span class="hidden sm:inline"><%= t("layout.connected_agents") %></span>
+            <% end %>
             <%= button_to session_path, method: :delete, aria: { label: t("layout.sign_out") },
                   class: "inline-flex items-center border-2 border-ink bg-white p-2.5 font-display text-xs tracking-wide text-ink shadow-comic-sm hover:bg-hero-yellow sm:px-2.5 sm:py-1 sm:text-sm" do %>
               <%= nav_icon(:sign_out) %><span class="hidden sm:inline"><%= t("layout.sign_out") %></span>

@@ -14,6 +14,11 @@ require "rails/test_unit/railtie"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+# Rack middleware, required explicitly (and excluded from autoload_lib below)
+# because it is referenced while the middleware stack is built at boot, before
+# Zeitwerk autoloading is available.
+require_relative "../lib/middleware/mcp_body_limit"
+
 module PasteHtmlDev
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.
@@ -22,7 +27,11 @@ module PasteHtmlDev
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks])
+    config.autoload_lib(ignore: %w[assets tasks middleware])
+
+    # Reject oversized bodies to /mcp and /oauth/register at the front of the
+    # stack, before anything parses or buffers them.
+    config.middleware.insert_before 0, McpBodyLimit
 
     # English (default) and Arabic. Fallbacks keep a half-finished Arabic
     # translation from ever breaking a page: a missing key falls back to English.

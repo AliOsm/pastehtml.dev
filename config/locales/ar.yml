@@ -9,6 +9,7 @@ ar:
     skip_to_content: تخطَّ إلى المحتوى
     dashboard: مكتبتي
     api_keys: مفاتيح API
+    connected_agents: الوكلاء المتصلون
     sign_in: تسجيل الدخول
     sign_up: إنشاء حساب
     sign_out: تسجيل الخروج
@@ -95,6 +96,23 @@ ar:
     meta:
       created: أُنشئ %{date}
       default_folder: "المجلد الافتراضي: %{folder}"
+      last_used: آخر استخدام %{date}
+      never_used: لم يُستخدم بعد
+
+  connected_agents:
+    title: الوكلاء المتصلون
+    eyebrow: وصول MCP
+    heading: الوكلاء المتصلون
+    body: تتصل الوكلاء مثل Claude Code وCodex بحسابك عبر OAuth للعمل نيابةً عنك. يمكنك إبطال الوصول في أي وقت — يسري ذلك فورًا.
+    back: العودة إلى مكتبتك
+    revoked: تم إبطال الوصول.
+    scopes_heading: "يمكنه:"
+    revoke: إبطال الوصول
+    revoke_confirm: هل تريد إبطال وصول هذا الوكيل؟ سيتوقف عن العمل فورًا.
+    empty_title: لا يوجد وكلاء متصلون
+    empty_body: لا يوجد وكلاء متصلون بعد. عند تفويض وكيل مثل Claude Code أو Codex، سيظهر هنا.
+    meta:
+      registered: اتصل %{date}
       last_used: آخر استخدام %{date}
       never_used: لم يُستخدم بعد
 
@@ -299,3 +317,27 @@ ar:
             folder:
               requires_user: يتطلب مالكًا مسجل الدخول
               invalid: يجب أن يكون مملوكًا لك
+
+  # شاشة موافقة OAuth وأخطاؤها لخادم تفويض MCP — بالتوازي مع en.yml.
+  doorkeeper:
+    scopes:
+      "mcp:read": قراءة صفحاتك ومجلداتك
+      "mcp:write": نشر صفحاتك ومجلداتك وتحديثها
+    authorizations:
+      new:
+        title: تفويض الوصول
+        eyebrow: طلب اتصال
+        heading: هل تفوّض الوصول؟
+        prompt_html: يريد %{client_name} الاتصال بحسابك على pastehtml.dev.
+        unverified_client: عميل مسجَّل ديناميكيًا غير موثَّق
+        redirect_host_html: سيستلم نتيجة تسجيل الدخول على %{host}.
+        self_asserted_name: يسمّي نفسه «%{name}» — هذا الاسم من ادعائه ولم يُتحقق منه.
+        able_to: "سيتمكن من:"
+        authorize: تفويض
+        deny: رفض
+      error:
+        title: فشل التفويض
+        eyebrow: خطأ OAuth
+    errors:
+      messages:
+        invalid_target: يجب أن يحدد معامل resource نقطة نهاية MCP لهذا الخادم مرة واحدة بالضبط.

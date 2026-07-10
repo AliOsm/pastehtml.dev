@@ -8,6 +8,7 @@ en:
     skip_to_content: "Skip to content"
     dashboard: "Dashboard"
     api_keys: "API keys"
+    connected_agents: "Connected agents"
     sign_in: "Sign in"
     sign_up: "Sign up"
     sign_out: "Sign out"
@@ -94,6 +95,23 @@ en:
     meta:
       created: "created %{date}"
       default_folder: "default folder: %{folder}"
+      last_used: "last used %{date}"
+      never_used: "never used"
+
+  connected_agents:
+    title: "Connected agents"
+    eyebrow: "MCP access"
+    heading: "Connected agents"
+    body: "Agents like Claude Code and Codex connect here through OAuth to act as your account. Revoke access any time — it takes effect immediately."
+    back: "Back to dashboard"
+    revoked: "Access revoked."
+    scopes_heading: "Can:"
+    revoke: "Revoke access"
+    revoke_confirm: "Revoke this agent's access? It will stop working immediately."
+    empty_title: "No agents connected"
+    empty_body: "No agents connected yet. When you authorize an agent like Claude Code or Codex, it will appear here."
+    meta:
+      registered: "connected %{date}"
       last_used: "last used %{date}"
       never_used: "never used"
 
@@ -298,3 +316,30 @@ en:
             folder:
               requires_user: "requires a signed-in owner"
               invalid: "must belong to you"
+
+  # OAuth consent screen + errors for the MCP authorization server. Doorkeeper
+  # ships its own English catalog for everything else (config/locales/en.yml in
+  # the gem); these keys are the app-authored subset the custom views and the
+  # hand-rolled RFC 8707 invalid_target error use.
+  doorkeeper:
+    scopes:
+      "mcp:read": "Read your pastes and folders"
+      "mcp:write": "Publish and update your pastes and folders"
+    authorizations:
+      new:
+        title: "Authorize access"
+        eyebrow: "Connection request"
+        heading: "Authorize access?"
+        prompt_html: "%{client_name} wants to connect to your pastehtml.dev account."
+        unverified_client: "Unverified dynamically registered client"
+        redirect_host_html: "It will receive the sign-in result at %{host}."
+        self_asserted_name: "It calls itself “%{name}” — that name is self-asserted, not verified."
+        able_to: "It will be able to:"
+        authorize: "Authorize"
+        deny: "Deny"
+      error:
+        title: "Authorization failed"
+        eyebrow: "OAuth error"
+    errors:
+      messages:
+        invalid_target: "The resource parameter must name the MCP endpoint of this server, exactly once."

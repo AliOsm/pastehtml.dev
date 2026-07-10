@@ -74,6 +74,16 @@ gem "meta-tags", "~> 2.23"
 # locales -- e.g. Arabic messages for blank / too_long / taken.
 gem "rails-i18n", "~> 8.0"
 
+# OAuth 2.1 authorization server for the MCP server. 5.9.1+ fixes a
+# public-client revocation bypass. The implementation depends on specific 5.9.x
+# extension seams (custom_access_token_attributes, the refresh-rotation path),
+# so hold below the next major.
+gem "doorkeeper", ">= 5.9.1", "< 6.0"
+
+# Official MCP Ruby SDK, used to implement the remote MCP server. Still 0.x and
+# changing shape release to release; pin to the 0.23.x patch line.
+gem "mcp", "~> 0.23.0"
+
 # Trust Cloudflare's IP ranges so remote_ip (and the per-IP rate limits) see
 # real client addresses behind the CF proxy. Production-only: the gem fetches
 # the ranges over the network, which dev and test have no use for.

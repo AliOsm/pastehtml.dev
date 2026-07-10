@@ -1,0 +1,24 @@
+# MCP OAuth clients are always public (confidential: false) and never hold a
+# secret -- CLI agents cannot keep one. `dynamic` marks clients minted through
+# Dynamic Client Registration (RFC 7591), whose self-asserted names are
+# untrusted and get the "unverified client" consent treatment.
+_fixture:
+  model_class: Doorkeeper::Application
+
+mcp_client:
+  name: "Test MCP Client"
+  uid: "test-mcp-client-uid"
+  secret: null
+  redirect_uri: "http://127.0.0.1:7777/callback"
+  scopes: "mcp:read mcp:write"
+  confidential: false
+  dynamic: false
+
+dynamic_client:
+  name: "Codex"
+  uid: "dynamic-mcp-client-uid"
+  secret: null
+  redirect_uri: "http://localhost:33418/oauth/callback"
+  scopes: "mcp:read mcp:write"
+  confidential: false
+  dynamic: true

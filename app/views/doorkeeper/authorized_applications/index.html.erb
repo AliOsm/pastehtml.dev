@@ -1,0 +1,59 @@
+<% set_meta_tags title: t("connected_agents.title"), noindex: true %>
+
+<div class="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="inline-block -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+        <%= t("connected_agents.eyebrow") %>
+      </p>
+      <h1 class="mt-5 font-display text-5xl text-balance text-ink text-kapow sm:text-6xl"><%= t("connected_agents.heading") %></h1>
+      <p class="mt-4 max-w-[64ch] text-base text-ink/70 sm:text-sm"><%= t("connected_agents.body") %></p>
+    </div>
+    <%= link_to t("connected_agents.back"), pastes_path,
+          class: "rounded-md border-3 border-ink bg-white px-4 py-2.5 font-display text-xl tracking-wide text-ink shadow-comic-sm hover:bg-hero-yellow" %>
+  </div>
+
+  <div class="mt-8 grid grid-cols-1 gap-4">
+    <% if @applications.any? %>
+      <% @applications.each do |application| %>
+        <article class="rounded-lg border-3 border-ink bg-white p-4 shadow-comic-sm">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
+              <h2 class="truncate font-display text-2xl tracking-wide text-ink"><%= application.name %></h2>
+              <% if application.dynamic? %>
+                <p class="mt-1 inline-block w-fit rounded-md border-2 border-ink bg-paper px-2 py-1 font-mono text-xs font-medium tracking-wide uppercase">
+                  <%= t("doorkeeper.authorizations.new.unverified_client") %>
+                </p>
+              <% end %>
+              <p class="mt-2 font-mono text-xs text-ink/60" dir="ltr"><%= redirect_hosts(application) %></p>
+              <p class="mt-2 text-sm text-ink/60">
+                <%= t("connected_agents.meta.registered", date: l(application.created_at.to_date, format: :long)) %>
+                ·
+                <% if (last_used_at = application_last_used_at(application, @tokens_by_application_id)).present? %>
+                  <%= t("connected_agents.meta.last_used", date: l(last_used_at.to_date, format: :long)) %>
+                <% else %>
+                  <%= t("connected_agents.meta.never_used") %>
+                <% end %>
+              </p>
+              <% scopes = granted_scope_labels(application, @tokens_by_application_id) %>
+              <% if scopes.any? %>
+                <p class="mt-2 text-sm text-ink/70">
+                  <span class="font-semibold text-ink"><%= t("connected_agents.scopes_heading") %></span>
+                  <%= scopes.join(" · ") %>
+                </p>
+              <% end %>
+            </div>
+            <%= button_to t("connected_agents.revoke"), oauth_authorized_application_path(application), method: :delete,
+                  form: { data: { turbo_confirm: t("connected_agents.revoke_confirm") } },
+                  class: "shrink-0 rounded-md border-2 border-ink bg-white px-3 py-2 font-display text-lg tracking-wide text-hero-red shadow-comic-sm hover:bg-hero-yellow" %>
+          </div>
+        </article>
+      <% end %>
+    <% else %>
+      <div class="rounded-lg border-3 border-ink bg-white p-6 text-center shadow-comic-sm">
+        <h2 class="font-display text-3xl tracking-wide text-ink"><%= t("connected_agents.empty_title") %></h2>
+        <p class="mt-2 text-base text-ink/70 sm:text-sm"><%= t("connected_agents.empty_body") %></p>
+      </div>
+    <% end %>
+  </div>
+</div>

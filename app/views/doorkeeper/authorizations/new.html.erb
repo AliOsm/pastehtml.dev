@@ -1,0 +1,65 @@
+<% set_meta_tags title: t(".title"), noindex: true %>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-14">
+  <p class="inline-block w-fit -rotate-1 border-2 border-ink bg-hero-yellow px-3 py-1 font-mono text-xs font-medium tracking-wide uppercase shadow-comic-sm">
+    <%= t(".eyebrow") %>
+  </p>
+  <h1 class="mt-5 font-display text-5xl text-balance text-ink text-kapow sm:text-6xl"><%= t(".heading") %></h1>
+
+  <div class="mt-8 grid gap-5 rounded-lg border-3 border-ink bg-white p-5 shadow-comic">
+    <% if @pre_auth.client.application.dynamic? %>
+      <%# DCR-minted clients pick their own name -- anyone can register as
+          "Codex". Lead with the unverified warning and the redirect host (the
+          one client-controlled value the flow actually verifies), and present
+          the self-asserted name only as such. %>
+      <div class="grid gap-2">
+        <p class="inline-block w-fit rounded-md border-2 border-ink bg-paper px-2 py-1 font-mono text-xs font-medium tracking-wide uppercase">
+          <%= t(".unverified_client") %>
+        </p>
+        <p class="text-base text-ink sm:text-sm">
+          <%= t(".redirect_host_html", host: tag.code(URI.parse(@pre_auth.redirect_uri).host, dir: "ltr", class: "font-mono font-semibold text-hero-blue")) %>
+        </p>
+        <p class="text-base text-ink/70 sm:text-sm">
+          <%= t(".self_asserted_name", name: @pre_auth.client.name) %>
+        </p>
+      </div>
+    <% else %>
+      <p class="text-base text-ink sm:text-sm">
+        <%= t(".prompt_html", client_name: tag.strong(@pre_auth.client.name)) %>
+      </p>
+    <% end %>
+
+    <% if @pre_auth.scopes.count > 0 %>
+      <div id="oauth-permissions">
+        <p class="font-display text-2xl tracking-wide text-ink"><%= t(".able_to") %></p>
+        <ul class="mt-2 grid gap-1 text-base text-ink sm:text-sm">
+          <% @pre_auth.scopes.each do |scope| %>
+            <li class="flex items-baseline gap-2">
+              <span aria-hidden="true" class="text-hero-blue">&#9656;</span>
+              <%= t(scope, scope: [:doorkeeper, :scopes]) %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="grid gap-3">
+      <%# Both forms re-submit the whole pre-auth parameter set: the approve
+          POST is a fresh request, so anything missing here is missing from
+          the grant. That includes the hidden `resource` field -- always the
+          CANONICAL McpOauth::CONFIG[:resource_uri], never the client's
+          spelling -- which Doorkeeper's stock form would silently drop
+          (RFC 8707 round-trip). %>
+      <%= form_tag oauth_authorization_path, method: :post do %>
+        <%= render "authorization_params" %>
+        <%= submit_tag t(".authorize"),
+              class: "w-full rounded-md border-3 border-ink bg-hero-red px-4 py-3 font-display text-2xl tracking-wide text-white shadow-comic-sm hover:bg-hero-red/90 t-press" %>
+      <% end %>
+      <%= form_tag oauth_authorization_path, method: :delete do %>
+        <%= render "authorization_params" %>
+        <%= submit_tag t(".deny"),
+              class: "w-full rounded-md border-2 border-ink bg-white px-4 py-2 font-display text-xl tracking-wide text-ink shadow-comic-sm hover:bg-paper t-press" %>
+      <% end %>
+    </div>
+  </div>
+</div>
