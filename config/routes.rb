@@ -94,6 +94,13 @@ Rails.application.routes.draw do
       # endpoint where MCP agents self-register before running the OAuth flow.
       # ActionController::API (no session, no CSRF): CLI clients POST bare JSON.
       post "oauth/register", to: "oauth/registrations#create"
+
+      # The MCP Streamable HTTP endpoint. Routed for GET, POST, and DELETE (not
+      # POST-only): the transport dispatches all three internally, and the
+      # transports spec requires GET to receive an SSE stream or a 405 -- a
+      # Rails routing 404 is neither. In stateless mode the transport produces
+      # the compliant refusals itself.
+      match "mcp", to: "mcp#handle", via: %i[get post delete]
     end
     get "p/:token", to: "pastes#show", as: :paste
     get "p/:token/password", to: "paste_passwords#new", as: :paste_password
