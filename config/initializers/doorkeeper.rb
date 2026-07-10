@@ -15,11 +15,11 @@ Doorkeeper.configure do
 
   resource_owner_authenticator do
     Session.find_by(id: cookies.signed[Authentication::AUTH_COOKIE_NAME])&.user || begin
-      # Mirror Authentication#request_authentication: SessionsController#create
-      # resumes ONLY via session[:return_to_after_authenticating] -- a return_to
-      # query param would be silently ignored and the OAuth flow would die on
-      # the dashboard after login. start_new_session_for already carries this
-      # key across its reset_session call.
+      # Mirror Authentication#request_authentication: successful sign-in and
+      # sign-up resume ONLY via session[:return_to_after_authenticating] -- a
+      # return_to query param would be silently ignored and the OAuth flow would
+      # die on the dashboard. start_new_session_for already carries this key
+      # across its reset_session call.
       session[:return_to_after_authenticating] = request.fullpath
       redirect_to(new_session_path)
     end

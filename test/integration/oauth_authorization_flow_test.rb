@@ -68,6 +68,36 @@ class OauthAuthorizationFlowTest < ActionDispatch::IntegrationTest
     assert_select "form input[type=hidden][name=resource][value=?]", CANONICAL_RESOURCE
   end
 
+  test "new user signing up during authorization resumes the full OAuth URL" do
+    authorize_url = "/oauth/authorize?#{authorize_params.to_query}"
+
+    get authorize_url
+    assert_response :see_other
+    assert_redirected_to new_session_path
+
+    # Follow the sign-up link without losing the server-side OAuth return path.
+    get new_user_path
+    assert_response :success
+
+    assert_difference "User.count", 1 do
+      post users_url, params: {
+        user: {
+          email_address: "new-mcp-user@example.com",
+          password: "correct horse battery staple",
+          password_confirmation: "correct horse battery staple"
+        }
+      }
+    end
+
+    assert_response :see_other
+    assert_equal authorize_url, URI.parse(response.location).then { |u| "#{u.path}?#{u.query}" }
+    assert_nil session[:return_to_after_authenticating]
+
+    follow_redirect!
+    assert_response :success
+    assert_select "form input[type=hidden][name=resource][value=?]", CANONICAL_RESOURCE
+  end
+
   test "dynamically registered clients are labeled unverified with their redirect host" do
     sign_in_as users(:alice)
     client = oauth_applications(:dynamic_client)

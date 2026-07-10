@@ -17,7 +17,7 @@ class UsersController < ApplicationController
 
     if @user.save
       start_new_session_for @user
-      redirect_to pastes_path, status: :see_other, notice: t("users.created")
+      redirect_to after_authentication_url, status: :see_other, notice: t("users.created")
     else
       render :new, status: :unprocessable_entity
     end
