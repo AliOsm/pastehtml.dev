@@ -70,6 +70,19 @@ RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
 RUN rm -rf node_modules
 
+# Generate the CycloneDX SBOM served at /.well-known/sbom.cdx.json, so the
+# published BOM always matches exactly the lockfiles (Gemfile.lock, yarn.lock)
+# this image was built from. Runs after the node_modules cleanup: syft reads
+# the lockfiles, and this keeps vendored files out of the scan. The syft
+# binary stays in this throw-away stage; only the JSON ships. The install
+# script resolves the build platform's arch and verifies the download against
+# the release's sha256 checksums itself. A hard failure here fails the image
+# build; validate the published document after each deploy with:
+#   curl -s https://pastehtml.dev/.well-known/sbom.cdx.json | cyclonedx validate --input-format json
+ARG SYFT_VERSION=v1.46.0
+RUN curl -sSfL https://get.anchore.io/syft | sh -s -- -b /usr/local/bin ${SYFT_VERSION} && \
+    syft scan dir:/rails --source-name pastehtml.dev -o cyclonedx-json=/rails/sbom.cdx.json
+
 
 # Final stage for app image
 FROM base

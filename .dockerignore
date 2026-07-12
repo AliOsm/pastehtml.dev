@@ -49,3 +49,7 @@
 # Ignore Docker-related files
 /.dockerignore
 /Dockerfile*
+
+# Never bake a stale locally-generated SBOM into the image; the build stage
+# regenerates it (see Dockerfile).
+/sbom.cdx.json

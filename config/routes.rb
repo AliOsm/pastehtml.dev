@@ -114,6 +114,22 @@ Rails.application.routes.draw do
       get ".well-known/oauth-protected-resource(/mcp)", to: "well_known#protected_resource"
       get ".well-known/oauth-authorization-server", to: "well_known#authorization_server"
 
+      # SEP-2127 MCP Server Card -- a static, cacheable descriptor of the
+      # server, its owner, and its transports that agents fetch before opening
+      # an MCP connection. Served twice: the .well-known path readiness
+      # checkers fetch (plain JSON; the literal .json stays part of the path
+      # segment, same pattern as manifest.json above), and the experimental
+      # discovery contract's reserved <mcp-url>/server-card location with its
+      # dedicated media type, linked from the catalog entrypoint.
+      get ".well-known/mcp/server-card.json", to: "well_known#server_card"
+      get "mcp/server-card", to: "well_known#server_card", defaults: { card_media_type: true }
+      get ".well-known/mcp/catalog.json", to: "well_known#catalog"
+
+      # CycloneDX SBOM, generated at image build time (see Dockerfile). Served
+      # through the controller rather than public/ so it carries a short cache
+      # policy instead of the static file server's 1-year header.
+      get ".well-known/sbom.cdx.json", to: "well_known#sbom"
+
       # RFC 7591 Dynamic Client Registration -- the PUBLIC, internet-facing
       # endpoint where MCP agents self-register before running the OAuth flow.
       # ActionController::API (no session, no CSRF): CLI clients POST bare JSON.
