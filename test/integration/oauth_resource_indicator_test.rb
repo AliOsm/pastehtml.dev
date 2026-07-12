@@ -151,10 +151,41 @@ class OauthResourceIndicatorTest < ActionDispatch::IntegrationTest
     assert response.parsed_body["result"].present?
   end
 
-  test "refresh without a resource parameter is rejected" do
+  test "refresh without a resource parameter inherits the original resource" do
     refresh_token = exchange_code_for_token["refresh_token"]
 
     post "/oauth/token", params: refresh_params(refresh_token).except(:resource)
+    assert_response :success
+
+    refreshed = Doorkeeper::AccessToken.by_token(response.parsed_body["access_token"])
+    assert_equal CANONICAL_RESOURCE, refreshed.resource
+  end
+
+  test "refresh with a mismatched resource is rejected" do
+    refresh_token = exchange_code_for_token["refresh_token"]
+
+    post "/oauth/token", params: refresh_params(refresh_token).merge(resource: "#{CANONICAL_RESOURCE}/other")
+    assert_response :bad_request
+    assert_equal "invalid_target", response.parsed_body["error"]
+  end
+
+  test "refresh with a repeated resource is rejected" do
+    refresh_token = exchange_code_for_token["refresh_token"]
+    body = refresh_params(refresh_token).to_query + "&resource=#{CGI.escape(CANONICAL_RESOURCE)}"
+
+    post "/oauth/token", params: body,
+      headers: { "Content-Type" => "application/x-www-form-urlencoded" }
+    assert_response :bad_request
+    assert_equal "invalid_target", response.parsed_body["error"]
+  end
+
+  test "refresh with an array resource is rejected" do
+    refresh_token = exchange_code_for_token["refresh_token"]
+    body = refresh_params(refresh_token).except(:resource).to_query +
+      "&resource[]=#{CGI.escape(CANONICAL_RESOURCE)}"
+
+    post "/oauth/token", params: body,
+      headers: { "Content-Type" => "application/x-www-form-urlencoded" }
     assert_response :bad_request
     assert_equal "invalid_target", response.parsed_body["error"]
   end

@@ -1,10 +1,12 @@
 # Hand-rolled RFC 8707 (Resource Indicators) enforcement -- Doorkeeper has no
 # native support. The MCP spec requires audience-bound tokens, and this
 # authorization server exists solely for the MCP endpoint, so both OAuth
-# endpoints demand EXACTLY ONE `resource` parameter naming it:
+# endpoints demand EXACTLY ONE `resource` parameter naming it, except that the
+# token endpoint may allow refresh grants to omit it and inherit the resource
+# already bound to the refresh token:
 #
-# - Missing, repeated, or array-style `resource` values are rejected with the
-#   RFC 8707 `invalid_target` error (each controller renders its own shape).
+# - Missing values are rejected unless a controller explicitly allows them;
+#   repeated and array-style values always fail with RFC 8707 `invalid_target`.
 # - The comparison follows RFC 3986 semantics: scheme and host are
 #   case-insensitive, the path is byte-exact. `HTTPS://HOST/mcp` passes,
 #   `/MCP` fails.
@@ -16,9 +18,17 @@ module Oauth
     private
       def enforce_resource_indicator
         supplied = raw_resource_values
+        return if supplied.empty? && allow_omitted_resource_indicator?
         return if supplied.length == 1 && canonical_resource?(supplied.first)
 
         reject_invalid_target
+      end
+
+      # Authorization requests and authorization-code exchanges require an
+      # explicit resource. The token controller overrides this narrowly for
+      # compatible refresh-token requests.
+      def allow_omitted_resource_indicator?
+        false
       end
 
       # Rails params collapse repeated keys (`resource=a&resource=b` becomes
@@ -28,8 +38,22 @@ module Oauth
       # arrive under the raw key "resource[]" and therefore count as zero
       # `resource` values, rejecting that shape too.
       def raw_resource_values
-        [ request.query_string, url_encoded_body ].flat_map do |raw|
-          Array(Rack::Utils.parse_query(raw.to_s)["resource"])
+        raw_parameter_values("resource")
+      end
+
+      def raw_resource_parameter_omitted?
+        raw_parameter_sets.none? do |parameters|
+          parameters.keys.any? { |key| key == "resource" || key.start_with?("resource[") }
+        end
+      end
+
+      def raw_parameter_values(name)
+        raw_parameter_sets.flat_map { |parameters| Array(parameters[name]) }
+      end
+
+      def raw_parameter_sets
+        @raw_parameter_sets ||= [ request.query_string, url_encoded_body ].map do |raw|
+          Rack::Utils.parse_query(raw.to_s)
         end
       end
 
