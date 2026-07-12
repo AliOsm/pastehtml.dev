@@ -135,7 +135,7 @@ above and connect to the remote MCP server at `https://pastehtml.dev/mcp`
 
 The first connection opens a browser consent screen; once approved, the agent
 acts inside that account. Auth is OAuth 2.1 + PKCE with Dynamic Client
-Registration (no client secret); scopes are `mcp:read` and `mcp:write`; the user
+Registration (no client secret); scopes are `mcp:read`, `mcp:pastes:write`, and `mcp:folders:write`; the user
 inspects and revokes agents under "Connected agents". Ten tools are exposed —
 pastes are permanent, so there is deliberately no delete-paste tool:
 

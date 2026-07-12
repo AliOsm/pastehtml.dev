@@ -4,7 +4,7 @@ class McpTools::ConfigurePasteTest < ActiveSupport::TestCase
   setup do
     @alice = users(:alice)
     @bob = users(:bob)
-    @ctx = { user: @alice }
+    @ctx = { user: @alice, scopes: McpTools::ALL_SCOPES }
   end
 
   test "sets a password" do
@@ -74,6 +74,35 @@ class McpTools::ConfigurePasteTest < ActiveSupport::TestCase
     assert_not @response.error?
     assert_equal true, @response.structured_content[:folder_created]
     assert_equal "Fresh Folder", @response.structured_content.dig(:folder, :name)
+  end
+
+  test "folder_name auto-create requires the folders write scope" do
+    paste = create_paste_for(@alice)
+    pastes_only = { user: @alice, scopes: [ McpTools::READ_SCOPE, McpTools::PASTES_WRITE_SCOPE ] }
+
+    assert_no_difference -> { Folder.count } do
+      @response = McpTools::ConfigurePaste.call(
+        token: paste.token, folder_name: "Fresh Folder", server_context: pastes_only
+      )
+    end
+
+    assert @response.error?
+    assert_equal "insufficient_scope", @response.structured_content[:code]
+    assert_equal "folder_name", @response.structured_content[:field]
+    assert_nil paste.reload.folder_id, "the paste must not be modified on a refused folder creation"
+  end
+
+  test "folder_name selecting an EXISTING folder needs no folders write scope" do
+    paste = create_paste_for(@alice)
+    pastes_only = { user: @alice, scopes: [ McpTools::READ_SCOPE, McpTools::PASTES_WRITE_SCOPE ] }
+    folder = folders(:projects)
+
+    response = McpTools::ConfigurePaste.call(
+      token: paste.token, folder_name: folder.name, server_context: pastes_only
+    )
+
+    assert_not response.error?
+    assert_equal folder.id, paste.reload.folder_id
   end
 
   test "a folder_id belonging to another user is a not-found error" do

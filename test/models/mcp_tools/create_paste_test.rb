@@ -4,7 +4,7 @@ class McpTools::CreatePasteTest < ActiveSupport::TestCase
   setup do
     @alice = users(:alice)
     @bob = users(:bob)
-    @ctx = { user: @alice }
+    @ctx = { user: @alice, scopes: McpTools::ALL_SCOPES }
   end
 
   test "html content is stored verbatim, owned by the token user, with a title" do
@@ -76,6 +76,35 @@ class McpTools::CreatePasteTest < ActiveSupport::TestCase
 
     assert_equal false, @response.structured_content[:folder_created]
     assert_equal existing.id, @response.structured_content.dig(:folder, :id)
+  end
+
+  test "folder_name auto-create requires the folders write scope" do
+    pastes_only = { user: @alice, scopes: [ McpTools::READ_SCOPE, McpTools::PASTES_WRITE_SCOPE ] }
+
+    assert_no_difference -> { Folder.count } do
+      assert_no_difference -> { Paste.count } do
+        @response = McpTools::CreatePaste.call(
+          content: "<p>x</p>", format: "html", folder_name: "Fresh Folder", server_context: pastes_only
+        )
+      end
+    end
+
+    assert @response.error?
+    assert_equal "insufficient_scope", @response.structured_content[:code]
+    assert_equal "folder_name", @response.structured_content[:field]
+  end
+
+  test "folder_name selecting an EXISTING folder needs no folders write scope" do
+    pastes_only = { user: @alice, scopes: [ McpTools::READ_SCOPE, McpTools::PASTES_WRITE_SCOPE ] }
+    folder = folders(:projects)
+
+    response = McpTools::CreatePaste.call(
+      content: "<p>x</p>", format: "html", folder_name: folder.name, server_context: pastes_only
+    )
+
+    assert_not response.error?
+    assert_equal folder.id, response.structured_content.dig(:folder, :id)
+    assert_equal false, response.structured_content[:folder_created]
   end
 
   test "a folder_id belonging to another user is an ownership (not-found) error" do

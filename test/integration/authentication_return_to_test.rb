@@ -42,7 +42,7 @@ class AuthenticationReturnToTest < ActionDispatch::IntegrationTest
 
     get "/oauth/authorize", params: {
       client_id: "c" * 43, redirect_uri: redirect_uri, response_type: "code",
-      scope: "mcp:read mcp:write", state: "s" * 128,
+      scope: "mcp:read mcp:pastes:write mcp:folders:write", state: "s" * 128,
       code_challenge: "d" * 43, code_challenge_method: "S256",
       resource: McpOauth::CONFIG[:resource_uri]
     }

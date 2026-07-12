@@ -135,9 +135,9 @@ codex mcp add pastehtml --url https://pastehtml.dev/mcp
 
 On first use the client opens a browser consent screen; approve it and the
 agent is connected — no key to copy or store. Authorization is OAuth 2.1 with
-PKCE and RFC 7591 Dynamic Client Registration, scoped to `mcp:read` and
-`mcp:write`. Review or revoke connected agents any time under **Connected
-agents** in the dashboard.
+PKCE and RFC 7591 Dynamic Client Registration, scoped to `mcp:read`,
+`mcp:pastes:write`, and `mcp:folders:write`. Review or revoke connected
+agents any time under **Connected agents** in the dashboard.
 
 Ten tools are exposed (pastes are permanent — there is no delete-paste tool):
 

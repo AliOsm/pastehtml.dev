@@ -322,7 +322,8 @@ ar:
   doorkeeper:
     scopes:
       "mcp:read": قراءة صفحاتك ومجلداتك
-      "mcp:write": نشر صفحاتك ومجلداتك وتحديثها
+      "mcp:pastes:write": نشر صفحاتك وتحديثها
+      "mcp:folders:write": إنشاء مجلداتك وإعادة تسميتها وحذفها
     authorizations:
       new:
         title: تفويض الوصول

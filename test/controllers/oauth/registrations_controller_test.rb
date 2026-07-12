@@ -6,7 +6,7 @@ require "test_helper"
 # validated strictly rather than echoed. Every client minted here is a public
 # client (confidential: false) that never holds a secret.
 class Oauth::RegistrationsControllerTest < ActionDispatch::IntegrationTest
-  NORMALIZED_SCOPE = "mcp:read mcp:write".freeze
+  NORMALIZED_SCOPE = "mcp:read mcp:pastes:write mcp:folders:write".freeze
 
   # --- Happy path -----------------------------------------------------------
 
@@ -99,6 +99,20 @@ class Oauth::RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal NORMALIZED_SCOPE, response.parsed_body["scope"]
     application = Doorkeeper::Application.find_by(uid: response.parsed_body["client_id"])
     assert_equal NORMALIZED_SCOPE, application.scopes.to_s
+  end
+
+  test "a single split write scope is a valid requested subset" do
+    register(redirect_uris: [ "http://127.0.0.1:49321/callback" ], scope: "mcp:pastes:write")
+
+    assert_response :created
+    assert_equal NORMALIZED_SCOPE, response.parsed_body["scope"]
+  end
+
+  test "the retired mcp:write spelling is rejected like any unknown scope" do
+    register(redirect_uris: [ "http://127.0.0.1:49321/callback" ], scope: "mcp:read mcp:write")
+
+    assert_response :bad_request
+    assert_equal "invalid_client_metadata", response.parsed_body["error"]
   end
 
   test "a supplied grant_types subset is normalized to the full pair" do

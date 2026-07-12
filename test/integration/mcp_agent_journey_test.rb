@@ -57,7 +57,7 @@ class McpAgentJourneyTest < ActionDispatch::IntegrationTest
       client_id: client_id,
       redirect_uri: redirect_uri,
       response_type: "code",
-      scope: "mcp:read mcp:write",
+      scope: "mcp:read mcp:pastes:write mcp:folders:write",
       state: state,
       code_challenge: code_challenge,
       code_challenge_method: "S256",
@@ -234,7 +234,7 @@ class McpAgentJourneyTest < ActionDispatch::IntegrationTest
       client_id: application.uid,
       redirect_uri: application.redirect_uri,
       response_type: "code",
-      scope: "mcp:read mcp:write",
+      scope: "mcp:read mcp:pastes:write mcp:folders:write",
       state: "log-filter-state",
       code_challenge: code_challenge,
       code_challenge_method: "S256",
@@ -280,7 +280,7 @@ class McpAgentJourneyTest < ActionDispatch::IntegrationTest
       post session_url, params: { email_address: user.email_address, password: "password" }
     end
 
-    def mint_token(user: users(:alice), application: oauth_applications(:mcp_client), scopes: "mcp:read mcp:write")
+    def mint_token(user: users(:alice), application: oauth_applications(:mcp_client), scopes: "mcp:read mcp:pastes:write mcp:folders:write")
       Doorkeeper::AccessToken.create!(
         application: application,
         resource_owner_id: user.id,

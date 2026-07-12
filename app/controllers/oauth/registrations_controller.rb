@@ -23,7 +23,7 @@ class Oauth::RegistrationsController < ActionController::API
 
   ALLOWED_GRANT_TYPES = %w[authorization_code refresh_token].freeze
   ALLOWED_RESPONSE_TYPES = %w[code].freeze
-  ALLOWED_SCOPES = %w[mcp:read mcp:write].freeze
+  ALLOWED_SCOPES = McpTools::ALL_SCOPES
   # Regardless of the requested subset, applications are persisted with -- and
   # the response returns -- the full allowed set. The granted subset lives
   # per-authorization, so a later step-up never needs a second registration.

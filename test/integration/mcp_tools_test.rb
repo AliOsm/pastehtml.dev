@@ -82,7 +82,26 @@ class McpToolsIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_response :forbidden
     assert_equal "insufficient_scope", response.parsed_body["error"]
-    assert_includes response.headers["WWW-Authenticate"], %(scope="mcp:read mcp:write")
+    # Union of the token's scopes and the missing one -- the unrelated
+    # folders scope is not solicited.
+    assert_includes response.headers["WWW-Authenticate"], %(scope="mcp:read mcp:pastes:write")
+    assert_not_includes response.headers["WWW-Authenticate"], "mcp:folders:write"
+  end
+
+  test "a pastes-write token cannot create a folder through create_paste's folder_name side effect" do
+    token = mint_token(scopes: "mcp:read mcp:pastes:write")
+
+    assert_no_difference -> { Folder.count } do
+      mcp_post(
+        tools_call_body("create_paste", content: "<p>x</p>", format: "html", folder_name: "Sneaky Folder"),
+        token: token.plaintext_token
+      )
+    end
+
+    assert_response :ok
+    result = response.parsed_body["result"]
+    assert result["isError"], "expected a structured tool error, not a created folder"
+    assert_equal "insufficient_scope", result.dig("structuredContent", "code")
   end
 
   test "list_pastes returns a schema-valid structured result through the server" do
@@ -147,7 +166,7 @@ class McpToolsIntegrationTest < ActionDispatch::IntegrationTest
     end
 
     def read_write_token
-      @read_write_token ||= mint_token(scopes: "mcp:read mcp:write")
+      @read_write_token ||= mint_token(scopes: "mcp:read mcp:pastes:write mcp:folders:write")
     end
 
     def read_token

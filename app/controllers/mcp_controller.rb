@@ -24,11 +24,14 @@ class McpController < ActionController::API
     "#{uri.scheme}://#{authority}".downcase.freeze
   end
 
-  # The full-access scope list every challenge advertises. Naming the full set
-  # (not just a missing scope) on the insufficient_scope step-up prevents a
-  # client from re-authorizing against a narrower scope and losing read access
-  # (scope oscillation).
-  CHALLENGE_SCOPE = "#{McpTools::READ_SCOPE} #{McpTools::WRITE_SCOPE}".freeze
+  # The scope list a TOKENLESS 401 advertises: the full set, since there is no
+  # granted set to build on and the client/user prune at consent. The 403
+  # step-up challenge is different -- it names the union of the token's
+  # granted scopes and the one missing scope (see challenge_insufficient_scope):
+  # keeping the granted scopes prevents a client from re-authorizing against a
+  # narrower scope and losing access it had (scope oscillation), while not
+  # soliciting unrelated scopes the call does not need.
+  CHALLENGE_SCOPE = McpTools::ALL_SCOPES.join(" ").freeze
 
   # The request ceiling for /mcp, shared with the front-of-stack McpBodyLimit so
   # the transport, the pre-dispatch peek, and the middleware all agree. Sized to
@@ -71,12 +74,16 @@ class McpController < ActionController::API
 
   def handle
     server = MCP::Server.new(
-      name: "pastehtml",
+      name: McpTools::SERVER_NAME,
+      title: McpTools::SERVER_TITLE,
       version: McpTools::VERSION,
       instructions: McpTools::INSTRUCTIONS,
       capabilities: SERVER_CAPABILITIES,
       tools: McpTools.for_scopes(token_scopes),
-      server_context: { user: current_token_user },
+      # Scopes ride along for tools whose SIDE EFFECTS are gated finer than
+      # the tool itself (create_paste may auto-create a folder only when the
+      # token also holds the folders write scope).
+      server_context: { user: current_token_user, scopes: token_scopes },
       # Turn on the SDK's server-side result validation so a successful tool
       # result that does not match its declared output_schema is caught here
       # rather than shipped to the agent. Argument validation is already on by
@@ -315,7 +322,7 @@ class McpController < ActionController::API
       # "unknown tool"; a scope the token already holds is fine.
       return if required.nil? || token_scopes.include?(required)
 
-      challenge_insufficient_scope
+      challenge_insufficient_scope(required)
     end
 
     # The tool name from a tools/call body, or nil when params is missing or not
@@ -327,9 +334,14 @@ class McpController < ActionController::API
       params.is_a?(Hash) ? params[:name] : nil
     end
 
-    def challenge_insufficient_scope
+    # SEP-835 clients re-authorize for exactly the scopes a challenge names, so
+    # the step-up asks for the union of what the token already holds and the
+    # one scope the call is missing -- granted scopes are never dropped (no
+    # oscillation) and unrelated scopes are never solicited (least privilege).
+    def challenge_insufficient_scope(required_scope)
+      scope = (token_scopes | [ required_scope ]).join(" ")
       response.headers["WWW-Authenticate"] =
-        %(Bearer error="insufficient_scope", scope="#{CHALLENGE_SCOPE}", ) +
+        %(Bearer error="insufficient_scope", scope="#{scope}", ) +
         %(resource_metadata="#{McpOauth::CONFIG[:protected_resource_metadata_url]}")
       render json: { error: "insufficient_scope" }, status: :forbidden
     end
@@ -338,7 +350,7 @@ class McpController < ActionController::API
       body = mcp_request_body
       return if body.nil?
       return unless body[:method] == "tools/call"
-      return unless McpTools.required_scope(requested_tool_name(body)) == McpTools::WRITE_SCOPE
+      return unless McpTools::WRITE_SCOPES.include?(McpTools.required_scope(requested_tool_name(body)))
 
       user_id = current_token_user&.id
       return if user_id.nil?

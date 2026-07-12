@@ -16,7 +16,9 @@ module McpTools
       required -- "html" stores the content as-is, "markdown" renders it to a \
       branded HTML page. If `filename` is given its extension must match `format`. \
       Supplying `folder_name` for a folder that does not exist creates it (the \
-      result sets folder_created: true). Returns the paste's token and its URLs.
+      result sets folder_created: true) -- creating requires the mcp:folders:write \
+      scope; selecting an existing folder does not. Returns the paste's token and \
+      its URLs.
     TEXT
 
     input_schema(
@@ -49,7 +51,7 @@ module McpTools
         },
         folder_name: {
           type: "string",
-          description: "Optional folder name; a missing folder is created (result sets folder_created: true)."
+          description: "Optional folder name; a missing folder is created (result sets folder_created: true; creation requires the mcp:folders:write scope)."
         }
       },
       required: [ "content", "format" ],
@@ -102,7 +104,7 @@ module McpTools
         translating_uniqueness_race(paste, attribute: :custom_subdomain) do
           result = nil
           Paste.transaction do
-            folder, folder_created, folder_error = resolve_or_create_folder(user, folder_id, folder_name)
+            folder, folder_created, folder_error = resolve_or_create_folder(user, folder_id, folder_name, scopes: scopes_for(server_context))
             if folder_error
               result = folder_error
               raise ActiveRecord::Rollback

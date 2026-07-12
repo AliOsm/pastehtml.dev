@@ -69,6 +69,13 @@ module McpTools
         server_context[:user]
       end
 
+      # The token's granted scopes from server_context. Deliberately strict:
+      # absent scopes mean NO scopes, so a caller that forgets to pass them can
+      # never unlock scope-gated side effects by omission.
+      def scopes_for(server_context)
+        Array(server_context[:scopes]).map(&:to_s)
+      end
+
       # Success: structured content plus a JSON text mirror for clients that
       # only read `content`.
       def ok(structured)
@@ -165,7 +172,12 @@ module McpTools
       # [folder, folder_created, error]. folder_id wins and must belong to the
       # user; a folder_id + folder_name pair naming different folders is a
       # conflict. Shared by create_paste and configure_paste.
-      def resolve_or_create_folder(user, folder_id, folder_name)
+      #
+      # Auto-CREATION (not selection) is a folder write, so it additionally
+      # requires the token to hold FOLDERS_WRITE_SCOPE -- a pastes-write-only
+      # token may file into existing folders but never mint new ones through
+      # this side door; it gets a correctable error pointing at create_folder.
+      def resolve_or_create_folder(user, folder_id, folder_name, scopes:)
         requested_name = folder_name.to_s.strip.presence
 
         if folder_id.present?
@@ -178,6 +190,17 @@ module McpTools
 
           [ folder, false, nil ]
         elsif requested_name
+          existing = user.folders.where("LOWER(name) = ?", requested_name.downcase).first
+          return [ existing, false, nil ] if existing
+          unless scopes.include?(FOLDERS_WRITE_SCOPE)
+            return [ nil, false, failure(
+              code: "insufficient_scope",
+              message: "No folder named #{requested_name.inspect} exists, and creating one requires the " \
+                       "#{FOLDERS_WRITE_SCOPE} scope. Create it with the create_folder tool or re-authorize.",
+              field: "folder_name"
+            ) ]
+          end
+
           find_or_create_folder(user, requested_name)
         else
           [ nil, false, nil ]

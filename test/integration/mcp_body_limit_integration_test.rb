@@ -112,7 +112,7 @@ class McpBodyLimitIntegrationTest < ActionDispatch::IntegrationTest
       Doorkeeper::AccessToken.create!(
         application: application,
         resource_owner_id: users(:alice).id,
-        scopes: "mcp:read mcp:write",
+        scopes: "mcp:read mcp:pastes:write mcp:folders:write",
         expires_in: 3600,
         resource: McpOauth::CONFIG[:resource_uri]
       )

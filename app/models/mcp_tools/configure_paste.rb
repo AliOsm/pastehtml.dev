@@ -13,8 +13,9 @@ module McpTools
       the link -- that is an exposure event even if a new password is set
       later -- and replacing a custom_subdomain immediately releases the old one
       for anyone else to claim. Supplying folder_name for a folder that does not
-      exist creates it (the result sets folder_created: true). Only pastes owned
-      by the authenticated user can be configured.
+      exist creates it (the result sets folder_created: true) -- creating
+      requires the mcp:folders:write scope; selecting an existing folder does
+      not. Only pastes owned by the authenticated user can be configured.
     TEXT
 
     input_schema(
@@ -26,7 +27,7 @@ module McpTools
         custom_subdomain: { type: "string", description: "Set (or replace) the paste's custom subdomain, releasing any previous one. Conflicts with clear_custom_subdomain." },
         clear_custom_subdomain: { type: "boolean", description: "Remove the custom subdomain, releasing it. Conflicts with custom_subdomain." },
         folder_id: { type: "integer", description: "File the paste into this folder (by id). Conflicts with clear_folder." },
-        folder_name: { type: "string", description: "File the paste into this folder (by name); creates it if missing. Conflicts with clear_folder." },
+        folder_name: { type: "string", description: "File the paste into this folder (by name); creates it if missing (creation requires the mcp:folders:write scope). Conflicts with clear_folder." },
         clear_folder: { type: "boolean", description: "Remove the paste from its folder. Conflicts with folder_id/folder_name." }
       },
       required: [ "token" ],
@@ -82,7 +83,7 @@ module McpTools
             apply_password!(paste, password, clear_password)
             apply_custom_subdomain!(paste, custom_subdomain, clear_custom_subdomain)
 
-            folder_created, folder_error = apply_folder!(paste, user, folder_id, folder_name, clear_folder)
+            folder_created, folder_error = apply_folder!(paste, user, folder_id, folder_name, clear_folder, scopes: scopes_for(server_context))
             if folder_error
               result = folder_error
               raise ActiveRecord::Rollback
@@ -148,7 +149,7 @@ module McpTools
         end
 
         # Returns [folder_created, error]; mutates paste.folder in place.
-        def apply_folder!(paste, user, folder_id, folder_name, clear_folder)
+        def apply_folder!(paste, user, folder_id, folder_name, clear_folder, scopes:)
           if clear_folder
             paste.folder = nil
             return [ false, nil ]
@@ -156,7 +157,7 @@ module McpTools
 
           return [ false, nil ] unless folder_id.present? || folder_name.present?
 
-          folder, folder_created, folder_error = resolve_or_create_folder(user, folder_id, folder_name)
+          folder, folder_created, folder_error = resolve_or_create_folder(user, folder_id, folder_name, scopes: scopes)
           return [ false, folder_error ] if folder_error
 
           paste.folder = folder

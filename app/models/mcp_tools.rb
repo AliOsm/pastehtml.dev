@@ -4,12 +4,20 @@
 # scope-enforcement plumbing before any tool exists.
 #
 # Each tool class is registered with the single OAuth scope required to call
-# it ("mcp:read" or "mcp:write"). The controller uses `required_scope` to
+# it ("mcp:read", "mcp:pastes:write" or "mcp:folders:write"). The controller
+# uses `required_scope` to
 # pre-authorize `tools/call` at the HTTP layer (a scope the token lacks is a
 # 403 step-up, never a JSON-RPC "unknown tool" error) and `for_scopes` to hand
 # the MCP server only the tools the token may see.
 module McpTools
-  VERSION = "1.0.0"
+  VERSION = "1.1.0"
+
+  # The server's one public identity, in the MCP registry's reverse-DNS
+  # namespace form. Shared by the initialize handshake (serverInfo.name), the
+  # server card, and the catalog; server.json at the repo root must carry the
+  # same value (bump/publish them together).
+  SERVER_NAME = "dev.pastehtml/mcp"
+  SERVER_TITLE = "PasteHTML"
 
   # Up-front invariants an agent must know before it acts. Surfaced through the
   # MCP `initialize` handshake as the server `instructions`.
@@ -22,7 +30,13 @@ module McpTools
   TEXT
 
   READ_SCOPE = "mcp:read"
-  WRITE_SCOPE = "mcp:write"
+  PASTES_WRITE_SCOPE = "mcp:pastes:write"
+  FOLDERS_WRITE_SCOPE = "mcp:folders:write"
+  # Every scope that gates a state-changing tool. The write rate limit meters
+  # all of them: pastes are permanent, so unmetered paste writes are unbounded
+  # storage growth, and folder mutations ride the same budget for simplicity.
+  WRITE_SCOPES = [ PASTES_WRITE_SCOPE, FOLDERS_WRITE_SCOPE ].freeze
+  ALL_SCOPES = [ READ_SCOPE, *WRITE_SCOPES ].freeze
 
   # tool class => required scope. A module instance variable, mutated only at
   # boot (Task 6's registrations) and in tests (register a fake tool, then
@@ -34,7 +48,7 @@ module McpTools
     # the same class overwrite the earlier scope, so tests can re-register
     # freely.
     def register(tool_class, scope:)
-      unless [ READ_SCOPE, WRITE_SCOPE ].include?(scope)
+      unless ALL_SCOPES.include?(scope)
         raise ArgumentError, "unknown scope #{scope.inspect}"
       end
 

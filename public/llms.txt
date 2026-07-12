@@ -114,7 +114,7 @@ user's browser -- there is no pht_ key to handle.
 
 The first call opens a browser consent screen; once the user approves it, the
 agent acts inside their account. Auth is OAuth 2.1 + PKCE with Dynamic Client
-Registration (no client secret), scopes mcp:read and mcp:write; the user manages
+Registration (no client secret), scopes mcp:read, mcp:pastes:write, and mcp:folders:write; the user manages
 or revokes agents under "Connected agents". Ten tools are exposed -- pastes are
 permanent, so there is no delete-paste tool:
 

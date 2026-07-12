@@ -60,7 +60,7 @@ Doorkeeper.configure do
   end
 
   default_scopes :"mcp:read"
-  optional_scopes :"mcp:write"
+  optional_scopes :"mcp:pastes:write", :"mcp:folders:write"
 
   access_token_expires_in 1.hour
 

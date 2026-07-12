@@ -27,7 +27,8 @@ class OauthAuthorizationFlowTest < ActionDispatch::IntegrationTest
 
     # Requested scopes are shown with human labels.
     assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:read")
-    assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:write")
+    assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:pastes:write")
+    assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:folders:write")
 
     code = approve_authorization!
     grant = Doorkeeper::AccessGrant.order(:id).last
@@ -42,7 +43,7 @@ class OauthAuthorizationFlowTest < ActionDispatch::IntegrationTest
     assert body["refresh_token"].present?
     assert_equal "Bearer", body["token_type"]
     assert_equal 1.hour.to_i, body["expires_in"]
-    assert_equal "mcp:read mcp:write", body["scope"]
+    assert_equal "mcp:read mcp:pastes:write mcp:folders:write", body["scope"]
 
     token = Doorkeeper::AccessToken.order(:id).last
     assert_equal CANONICAL_RESOURCE, token.resource
@@ -191,6 +192,17 @@ class OauthAuthorizationFlowTest < ActionDispatch::IntegrationTest
     assert_nil from_param
   end
 
+  test "the retired mcp:write spelling is an invalid_scope error, never a grant" do
+    sign_in_as users(:alice)
+
+    post "/oauth/authorize", params: authorize_params(scope: "mcp:read mcp:write")
+
+    # Doorkeeper hands redirectable errors back to the client callback.
+    assert_response :redirect
+    assert_includes response.location, "error=invalid_scope"
+    assert_nil Doorkeeper::AccessGrant.order(:id).last
+  end
+
   test "omitting scope grants the default mcp:read scope" do
     sign_in_as users(:alice)
 
@@ -214,7 +226,7 @@ class OauthAuthorizationFlowTest < ActionDispatch::IntegrationTest
         client_id: oauth_applications(:mcp_client).uid,
         redirect_uri: oauth_applications(:mcp_client).redirect_uri,
         response_type: "code",
-        scope: "mcp:read mcp:write",
+        scope: "mcp:read mcp:pastes:write mcp:folders:write",
         state: "opaque-client-state",
         code_challenge: code_challenge,
         code_challenge_method: "S256",

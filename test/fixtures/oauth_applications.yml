@@ -10,7 +10,7 @@ mcp_client:
   uid: "test-mcp-client-uid"
   secret: null
   redirect_uri: "http://127.0.0.1:7777/callback"
-  scopes: "mcp:read mcp:write"
+  scopes: "mcp:read mcp:pastes:write mcp:folders:write"
   confidential: false
   dynamic: false
 
@@ -19,6 +19,6 @@ dynamic_client:
   uid: "dynamic-mcp-client-uid"
   secret: null
   redirect_uri: "http://localhost:33418/oauth/callback"
-  scopes: "mcp:read mcp:write"
+  scopes: "mcp:read mcp:pastes:write mcp:folders:write"
   confidential: false
   dynamic: true

@@ -214,7 +214,7 @@ class OauthResourceIndicatorTest < ActionDispatch::IntegrationTest
         client_id: oauth_applications(:mcp_client).uid,
         redirect_uri: oauth_applications(:mcp_client).redirect_uri,
         response_type: "code",
-        scope: "mcp:read mcp:write",
+        scope: "mcp:read mcp:pastes:write mcp:folders:write",
         state: "opaque-client-state",
         code_challenge: code_challenge,
         code_challenge_method: "S256",

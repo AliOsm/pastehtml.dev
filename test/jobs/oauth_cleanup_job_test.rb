@@ -209,7 +209,7 @@ class OauthCleanupJobTest < ActiveJob::TestCase
       application = Doorkeeper::Application.create!(
         name: "Test App #{SecureRandom.hex(4)}",
         redirect_uri: "http://127.0.0.1:#{rand(20_000..60_000)}/callback",
-        scopes: "mcp:read mcp:write",
+        scopes: "mcp:read mcp:pastes:write mcp:folders:write",
         confidential: false,
         dynamic: dynamic
       )
@@ -222,7 +222,7 @@ class OauthCleanupJobTest < ActiveJob::TestCase
       token = Doorkeeper::AccessToken.create!(
         application: application,
         resource_owner_id: user.id,
-        scopes: "mcp:read mcp:write",
+        scopes: "mcp:read mcp:pastes:write mcp:folders:write",
         expires_in: 3600,
         resource: RESOURCE
       )
@@ -241,7 +241,7 @@ class OauthCleanupJobTest < ActiveJob::TestCase
         resource_owner_id: user.id,
         redirect_uri: application.redirect_uri,
         expires_in: expires_in,
-        scopes: "mcp:read mcp:write",
+        scopes: "mcp:read mcp:pastes:write mcp:folders:write",
         resource: RESOURCE
       )
       columns = { revoked_at: revoked_at, created_at: created_at }.compact

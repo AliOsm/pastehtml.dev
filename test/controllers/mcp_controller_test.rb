@@ -15,10 +15,19 @@ end
 
 class FakeMcpWriteTool < MCP::Tool
   tool_name "fake_write"
-  description "A fake write tool for tests."
+  description "A fake paste-write tool for tests."
 
   def self.call(**_args)
     MCP::Tool::Response.new([ { type: "text", text: "write ok" } ])
+  end
+end
+
+class FakeMcpFolderWriteTool < MCP::Tool
+  tool_name "fake_folder_write"
+  description "A fake folder-write tool for tests."
+
+  def self.call(**_args)
+    MCP::Tool::Response.new([ { type: "text", text: "folder write ok" } ])
   end
 end
 
@@ -38,13 +47,15 @@ class McpControllerTest < ActionDispatch::IntegrationTest
   setup do
     @user = users(:alice)
     @application = oauth_applications(:mcp_client)
-    McpTools.register(FakeMcpReadTool, scope: "mcp:read")
-    McpTools.register(FakeMcpWriteTool, scope: "mcp:write")
+    McpTools.register(FakeMcpReadTool, scope: McpTools::READ_SCOPE)
+    McpTools.register(FakeMcpWriteTool, scope: McpTools::PASTES_WRITE_SCOPE)
+    McpTools.register(FakeMcpFolderWriteTool, scope: McpTools::FOLDERS_WRITE_SCOPE)
   end
 
   teardown do
     McpTools.deregister(FakeMcpReadTool)
     McpTools.deregister(FakeMcpWriteTool)
+    McpTools.deregister(FakeMcpFolderWriteTool)
   end
 
   # --- Happy path ----------------------------------------------------------
@@ -55,7 +66,10 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_response :ok
     result = response.parsed_body["result"]
     assert result.present?, "expected a JSON-RPC result"
-    assert_equal "pastehtml", result.dig("serverInfo", "name")
+    # One identity everywhere: serverInfo, the server card, and server.json all
+    # carry the registry name.
+    assert_equal McpTools::SERVER_NAME, result.dig("serverInfo", "name")
+    assert_equal "dev.pastehtml/mcp", result.dig("serverInfo", "name")
     assert result["protocolVersion"].present?
     assert_match(/permanent/, result["instructions"].to_s)
   end
@@ -98,7 +112,7 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert challenge.present?
     assert_not_includes challenge, "error="
     assert_includes challenge, %(resource_metadata=)
-    assert_includes challenge, %(scope="mcp:read mcp:write")
+    assert_includes challenge, %(scope="mcp:read mcp:pastes:write mcp:folders:write")
   end
 
   test "a garbage token yields error=invalid_token" do
@@ -143,7 +157,7 @@ class McpControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "a token bound to another resource (wrong audience) yields error=invalid_token" do
-    token = mint_token(scopes: "mcp:read mcp:write", resource: "https://evil.example.com/mcp")
+    token = mint_token(scopes: "mcp:read mcp:pastes:write mcp:folders:write", resource: "https://evil.example.com/mcp")
 
     mcp_post(initialize_body, token: token.plaintext_token)
 
@@ -175,15 +189,38 @@ class McpControllerTest < ActionDispatch::IntegrationTest
 
   # --- Scope step-up --------------------------------------------------------
 
-  test "a read-only token calling a write tool gets a 403 full-scope step-up" do
+  test "a read-only token calling a write tool gets a 403 step-up for exactly its scopes plus the missing one" do
     mcp_post(tools_call_body("fake_write"), token: read_token.plaintext_token)
 
     assert_response :forbidden
     assert_equal "insufficient_scope", response.parsed_body["error"]
     challenge = response.headers["WWW-Authenticate"]
     assert_includes challenge, %(error="insufficient_scope")
-    assert_includes challenge, %(scope="mcp:read mcp:write")
+    # Union of granted + required: no oscillation (granted scopes are kept),
+    # no over-request (the unrelated folders scope is NOT solicited).
+    assert_includes challenge, %(scope="mcp:read mcp:pastes:write")
+    assert_not_includes challenge, "mcp:folders:write"
     assert_includes challenge, %(resource_metadata=)
+  end
+
+  test "a pastes-write token calling a folder-write tool is a 403 step-up naming all held scopes plus folders" do
+    token = mint_token(scopes: "mcp:read mcp:pastes:write")
+
+    mcp_post(tools_call_body("fake_folder_write"), token: token.plaintext_token)
+
+    assert_response :forbidden
+    assert_equal "insufficient_scope", response.parsed_body["error"]
+    assert_includes response.headers["WWW-Authenticate"], %(scope="mcp:read mcp:pastes:write mcp:folders:write")
+  end
+
+  test "a folders-write token calling a paste-write tool is a 403 step-up without dropping granted scopes" do
+    token = mint_token(scopes: "mcp:read mcp:folders:write")
+
+    mcp_post(tools_call_body("fake_write"), token: token.plaintext_token)
+
+    assert_response :forbidden
+    assert_equal "insufficient_scope", response.parsed_body["error"]
+    assert_includes response.headers["WWW-Authenticate"], %(scope="mcp:read mcp:folders:write mcp:pastes:write")
   end
 
   test "calling an unknown tool is not a 403 (SDK answers instead)" do
@@ -468,6 +505,18 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     assert_equal "rate_limited", response.parsed_body["error"]
   end
 
+  test "folder writes share the same write meter as paste writes" do
+    token = read_write_token
+    minute_key = "mcp-write-rate:minute:#{@user.id}"
+
+    with_counting_cache_store(minute_key => WRITE_LIMIT) do
+      mcp_post(tools_call_body("fake_folder_write"), token: token.plaintext_token)
+    end
+
+    assert_response :too_many_requests
+    assert_equal "rate_limited", response.parsed_body["error"]
+  end
+
   private
     WRITE_LIMIT = McpController::WRITE_LIMIT_PER_MINUTE
 
@@ -496,7 +545,7 @@ class McpControllerTest < ActionDispatch::IntegrationTest
     end
 
     def read_write_token
-      @read_write_token ||= mint_token(scopes: "mcp:read mcp:write")
+      @read_write_token ||= mint_token(scopes: "mcp:read mcp:pastes:write mcp:folders:write")
     end
 
     def read_token

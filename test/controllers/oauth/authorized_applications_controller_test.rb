@@ -55,13 +55,14 @@ class Oauth::AuthorizedApplicationsControllerTest < ActionDispatch::IntegrationT
 
   test "shows human scope labels for granted scopes" do
     sign_in_as users(:alice)
-    mint_token(user: users(:alice), application: oauth_applications(:mcp_client), scopes: "mcp:read mcp:write")
+    mint_token(user: users(:alice), application: oauth_applications(:mcp_client), scopes: "mcp:read mcp:pastes:write mcp:folders:write")
 
     get oauth_authorized_applications_url
     assert_response :success
 
     assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:read")
-    assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:write")
+    assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:pastes:write")
+    assert_includes response.body, I18n.t("doorkeeper.scopes.mcp:folders:write")
   end
 
   test "shows a never-used state and a formatted last-used date" do
@@ -136,7 +137,7 @@ class Oauth::AuthorizedApplicationsControllerTest < ActionDispatch::IntegrationT
       assert_redirected_to pastes_url
     end
 
-    def mint_token(user:, application:, scopes: "mcp:read mcp:write", resource: RESOURCE, use_refresh_token: false)
+    def mint_token(user:, application:, scopes: "mcp:read mcp:pastes:write mcp:folders:write", resource: RESOURCE, use_refresh_token: false)
       Doorkeeper::AccessToken.create!(
         application: application,
         resource_owner_id: user.id,
