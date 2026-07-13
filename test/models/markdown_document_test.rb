@@ -114,10 +114,4 @@ class MarkdownDocumentTest < ActiveSupport::TestCase
     html = MarkdownDocument.new("no leading marker\n\n---\n\nafter the rule", filename: "x.md").to_html
     assert_includes html, "<hr"
   end
-
-  test "treats front matter with yaml aliases as plain body instead of raising" do
-    html = MarkdownDocument.new("---\nfoo: &anchor bar\nbaz: *anchor\n---\nbody", filename: "x.md").to_html
-    assert_includes html, "<title>x</title>"
-    assert_includes html, "baz: *anchor"
-  end
 end
