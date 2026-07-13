@@ -172,7 +172,7 @@ class MarkdownDocument
 
       data = YAML.safe_load(match[1], permitted_classes: [ Date, Time ])
       data.is_a?(Hash) ? [ data, match[2] ] : [ {}, raw ]
-    rescue Psych::SyntaxError, Psych::DisallowedClass
+    rescue Psych::Exception
       [ {}, raw ]
     end
   end
