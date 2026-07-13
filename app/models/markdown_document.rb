@@ -18,6 +18,10 @@ class MarkdownDocument
     autolink: true, tasklist: true, footnotes: true
   }.freeze
 
+  # A leading `---` block of YAML, terminated by another `---` line. Common to
+  # every static-site generator's Markdown dialect (Jekyll, Hugo, Astro, ...).
+  FRONT_MATTER_PATTERN = /\A---[ \t]*\r?\n(.*?)\r?\n---[ \t]*\r?\n?(.*)\z/m
+
   # Pinned so a stored paste renders identically forever. The ESM build boots
   # itself via startOnLoad and upgrades every <pre class="mermaid">.
   MERMAID_MODULE = "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs".freeze
@@ -67,7 +71,7 @@ class MarkdownDocument
   CSS
 
   def initialize(markdown, filename: nil)
-    @markdown = markdown.to_s
+    @front_matter, @markdown = self.class.split_front_matter(markdown.to_s)
     @filename = filename.to_s
   end
 
@@ -81,7 +85,7 @@ class MarkdownDocument
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>#{CGI.escapeHTML(document_title)}</title>
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      #{description_meta_tag}<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
       <link rel="stylesheet" href="#{FONTS_HREF}">
       <style>
       #{BRAND_CSS}#{HIGHLIGHT_CSS}
@@ -141,9 +145,35 @@ class MarkdownDocument
         %(</script>)
     end
 
-    # The document's own H1 names it; fall back to the filename (sans extension)
-    # so the paste still gets a meaningful <title> -- and title.
+    # Front matter's `title` wins if present; then the document's own H1; then
+    # the filename (sans extension), so the paste still gets a meaningful
+    # <title>.
     def document_title
-      @heading.presence || File.basename(@filename, ".*").presence || "Untitled"
+      @front_matter["title"].presence || @heading.presence ||
+        File.basename(@filename, ".*").presence || "Untitled"
     end
+
+    def description_meta_tag
+      description = @front_matter["description"].presence
+      return "" unless description
+
+      %(<meta name="description" content="#{CGI.escapeHTML(description.to_s)}">\n)
+    end
+
+  class << self
+    # Splits a leading YAML front-matter block off the Markdown body. Returns
+    # [{}, raw] unchanged if there's no front matter, the YAML doesn't parse,
+    # or it doesn't parse to a Hash -- front matter is metadata, never load-bearing
+    # for rendering, so any trouble here just means the whole file is treated
+    # as plain Markdown body.
+    def split_front_matter(raw)
+      match = FRONT_MATTER_PATTERN.match(raw)
+      return [ {}, raw ] unless match
+
+      data = YAML.safe_load(match[1], permitted_classes: [ Date, Time ])
+      data.is_a?(Hash) ? [ data, match[2] ] : [ {}, raw ]
+    rescue Psych::SyntaxError, Psych::DisallowedClass
+      [ {}, raw ]
+    end
+  end
 end
