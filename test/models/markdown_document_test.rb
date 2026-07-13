@@ -56,4 +56,62 @@ class MarkdownDocumentTest < ActiveSupport::TestCase
 
     assert_not_includes html, "alert('xss')"
   end
+
+  test "strips yaml front matter and uses it for title and description" do
+    html = MarkdownDocument.new(<<~MD, filename: "x.md").to_html
+      ---
+      title: "My Document Title"
+      author: "Jane Doe"
+      date: 2026-07-13
+      tags: [markdown, tutorial, yaml]
+      draft: false
+      description: "A test document"
+      ---
+
+      # Document Heading Starts Here
+      This is the regular Markdown body text.
+    MD
+
+    assert_includes html, "<title>My Document Title</title>"
+    assert_includes html, '<meta name="description" content="A test document">'
+    assert_not_includes html, "title: \"My Document Title\""
+    assert_includes html, ">Document Heading Starts Here</h1>"
+  end
+
+  test "front matter title overrides an h1" do
+    html = MarkdownDocument.new(<<~MD, filename: "x.md").to_html
+      ---
+      title: From Front Matter
+      ---
+      # From Heading
+    MD
+
+    assert_includes html, "<title>From Front Matter</title>"
+  end
+
+  test "falls back to h1, then filename, when front matter has no title" do
+    assert_includes MarkdownDocument.new("---\nauthor: Jane\n---\n# Heading", filename: "x.md").to_html,
+      "<title>Heading</title>"
+    assert_includes MarkdownDocument.new("---\nauthor: Jane\n---\nbody", filename: "my-notes.md").to_html,
+      "<title>my-notes</title>"
+  end
+
+  test "omits the description tag when front matter has none" do
+    html = MarkdownDocument.new("# Plain\n\ntext", filename: "x.md").to_html
+    assert_not_includes html, 'name="description"'
+  end
+
+  test "treats malformed or non-mapping front matter as plain body" do
+    malformed = MarkdownDocument.new("---\n[1, 2\n---\nbody", filename: "x.md").to_html
+    assert_includes malformed, "[1, 2"
+
+    sequence = MarkdownDocument.new("---\n- a\n- b\n---\nbody", filename: "x.md").to_html
+    assert_includes sequence, "<li>a</li>"
+    assert_includes sequence, "<li>b</li>"
+  end
+
+  test "does not treat a body horizontal rule as front matter" do
+    html = MarkdownDocument.new("no leading marker\n\n---\n\nafter the rule", filename: "x.md").to_html
+    assert_includes html, "<hr"
+  end
 end
