@@ -82,7 +82,7 @@ gem "doorkeeper", ">= 5.9.1", "< 6.0"
 
 # Official MCP Ruby SDK, used to implement the remote MCP server. Still 0.x and
 # changing shape release to release; pin to the 0.23.x patch line.
-gem "mcp", "~> 0.23.0"
+gem "mcp", "~> 0.24.0"
 
 # Trust Cloudflare's IP ranges so remote_ip (and the per-IP rate limits) see
 # real client addresses behind the CF proxy. Production-only: the gem fetches
