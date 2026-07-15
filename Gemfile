@@ -66,7 +66,7 @@ gem "rouge", "~> 5.0"
 gem "reverse_markdown", "~> 3.0"
 
 # GitHub-flavored Markdown -> HTML for markdown uploads (cmark-gfm/comrak).
-gem "commonmarker", "~> 2.0"
+gem "commonmarker", "~> 2.9"
 
 gem "meta-tags", "~> 2.23"
 
