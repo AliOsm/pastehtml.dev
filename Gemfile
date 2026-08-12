@@ -60,7 +60,7 @@ group :test do
   gem "selenium-webdriver"
 end
 
-gem "rouge", "~> 5.0"
+gem "rouge", "~> 5.1"
 
 # Converts a paste's HTML into Markdown for the /p/<token>/markdown endpoint.
 gem "reverse_markdown", "~> 3.0"
