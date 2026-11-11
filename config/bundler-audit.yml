@@ -2,4 +2,8 @@
 # CVEs that are not relevant to the application can be enumerated on the ignore list below.
 
 ignore:
-  - CVE-THAT-DOES-NOT-APPLY
+  # Affects outbound MCP::Client::OAuth discovery. This app only hosts an
+  # MCP::Server and uses Doorkeeper for inbound OAuth; it never creates an MCP
+  # client or performs SDK OAuth discovery. Revisit before adding an MCP client.
+  # https://github.com/modelcontextprotocol/ruby-sdk/security/advisories/GHSA-4m5j-jjfc-97gx
+  - GHSA-4m5j-jjfc-97gx
