@@ -15,6 +15,12 @@ module PasteAccess
     end
 
     def require_paste_password!(paste, redirect: true)
+      if paste.suspicious?
+        response.headers["Cache-Control"] = "no-store"
+        render plain: "This paste is unavailable.", status: :forbidden
+        return false
+      end
+
       return true if paste_unlocked?(paste)
 
       if redirect
